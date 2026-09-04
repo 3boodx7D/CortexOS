@@ -1,0 +1,1 @@
+- [CortexOS build notes](cortexos-build-notes.md) — preserve the API boundary while native/cloud layers are added; current Zod codegen needs numeric schemas.
