@@ -13,6 +13,7 @@ interface UserStoreContextType {
   lastSynced: string | null;
   syncAllToCloud: () => Promise<boolean>;
   getScopedKey: (key: string) => string;
+  updateDisplayName: (name: string) => Promise<boolean>;
 }
 
 const UserStoreContext = createContext<UserStoreContextType | null>(null);
@@ -42,8 +43,43 @@ export function UserStoreProvider({
   const user = session?.user || null;
   const userId = user?.id || 'guest';
   const email = user?.email || 'user@cortex.os';
-  const displayName = (user?.user_metadata?.name as string) || email.split('@')[0] || 'Operator';
+
+  const [customName, setCustomName] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    return localStorage.getItem(`cortex_custom_name_${userId}`) || '';
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(`cortex_custom_name_${userId}`);
+      if (stored) {
+        setCustomName(stored);
+      } else if (user?.user_metadata?.name) {
+        setCustomName(user.user_metadata.name);
+      }
+    }
+  }, [userId, user]);
+
+  const displayName = customName || (user?.user_metadata?.name as string) || email.split('@')[0] || 'Operator';
   const avatarChar = displayName.charAt(0).toUpperCase() || 'U';
+
+  const updateDisplayName = useCallback(async (name: string): Promise<boolean> => {
+    setCustomName(name);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`cortex_custom_name_${userId}`, name);
+    }
+    try {
+      if (user && userId !== 'guest') {
+        await supabase.auth.updateUser({
+          data: { name },
+        });
+      }
+      return true;
+    } catch (e) {
+      console.warn('Could not update remote user name:', e);
+      return false;
+    }
+  }, [user, userId]);
 
   const getScopedKey = useCallback((key: string) => {
     return `cortex_u_${userId}_${key}`;
@@ -165,6 +201,7 @@ export function UserStoreProvider({
         lastSynced,
         syncAllToCloud,
         getScopedKey,
+        updateDisplayName,
       }}
     >
       {children}

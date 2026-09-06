@@ -1,30 +1,44 @@
-import { type ChangeEvent, useCallback, useRef, useState } from 'react';
+import { type ChangeEvent, useCallback, useRef, useState, useEffect } from 'react';
 import {
-  Check, ChevronRight, Database,
-  Globe, HardDrive, Info, LogOut, Moon, Palette, RefreshCw, ShieldCheck, Sun,
-  Upload, Zap,
+  Check, ChevronRight, Cpu, Eye,
+  Globe, HardDrive, Info, Lock, LogOut, Monitor, Moon, Palette, RefreshCw, Save, Shield, ShieldCheck, Sun,
+  Upload, User as UserIcon, Zap,
 } from 'lucide-react';
 import { useTranslation, saveLocaleAndReload, type Locale } from '@/lib/i18n';
 import { usePersistent } from '@/hooks/use-persistent';
-import { signOut, checkSupabaseConnection } from '@/lib/supabase';
+import { signOut } from '@/lib/supabase';
 import { useUserContext } from '@/lib/user-store';
 
 export type MotionMode = 'minimal' | 'cinematic';
 
 export default function Settings({ notify }: { notify: (msg: string) => void }) {
   const { t, locale } = useTranslation();
-  const { email, userId, syncStatus, lastSynced, syncAllToCloud } = useUserContext();
-  const [activeTab, setActiveTab] = useState('appearance');
+  const { email, userId, displayName, avatarChar, syncStatus, lastSynced, syncAllToCloud, updateDisplayName } = useUserContext();
+  const [activeTab, setActiveTab] = useState('account');
 
   // State
   const [theme, setTheme] = usePersistent<'dark' | 'light'>('cortex-theme', 'dark');
   const [motionMode, setMotionMode] = usePersistent<MotionMode>('cortex-motion', 'cinematic');
   const [pendingLocale, setPendingLocale] = useState<Locale>(locale);
-  const [connectionStatus, setConnectionStatus] = useState('ONLINE');
-  const [checkingCloud, setCheckingCloud] = useState(false);
+
+  // Desktop App (PC) simulated settings
+  const [autoStart, setAutoStart] = usePersistent<boolean>('cortex-pc-autostart', true);
+  const [runInBackground, setRunInBackground] = usePersistent<boolean>('cortex-pc-background', true);
+  const [gpuAcceleration, setGpuAcceleration] = usePersistent<boolean>('cortex-pc-gpu', true);
+  const [globalHotkeys, setGlobalHotkeys] = usePersistent<boolean>('cortex-pc-hotkeys', true);
+
+  // Account editing
+  const [inputName, setInputName] = useState(displayName);
+  const [savingName, setSavingName] = useState(false);
   const [syncingNow, setSyncingNow] = useState(false);
+
+  // File import/export
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+
+  useEffect(() => {
+    setInputName(displayName);
+  }, [displayName]);
 
   // Theme switching
   const applyTheme = useCallback((newTheme: 'dark' | 'light') => {
@@ -50,32 +64,27 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
     }
   };
 
-  // Cloud test
-  const testSupabaseConnection = async () => {
-    setCheckingCloud(true);
-    try {
-      const res = await checkSupabaseConnection();
-      if (res.ok) {
-        setConnectionStatus(`ONLINE (${res.latencyMs || 120}ms)`);
-        notify(locale === 'ar' ? 'الاتصال بسحابة Supabase سليم وسريع' : 'Supabase Cloud connection nominal');
-      } else {
-        setConnectionStatus('ONLINE (Cluster Ready)');
-      }
-    } catch {
-      setConnectionStatus('ONLINE (Cluster Ready)');
-    } finally {
-      setCheckingCloud(false);
+  // Name save
+  const handleSaveName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputName.trim()) return;
+    setSavingName(true);
+    const ok = await updateDisplayName(inputName.trim());
+    setSavingName(false);
+    if (ok) {
+      notify(t('settings.account.nameUpdated'));
     }
   };
 
+  // Cloud Sync
   const handleSyncCloud = async () => {
     setSyncingNow(true);
     const ok = await syncAllToCloud();
     setSyncingNow(false);
     if (ok) {
-      notify(locale === 'ar' ? 'تمت مزامنة بيانات حسابك مع Supabase بنجاح' : 'Account data synchronized to Supabase Cloud');
+      notify(t('settings.account.syncSuccess'));
     } else {
-      notify(locale === 'ar' ? 'تم حفظ البيانات محلياً' : 'Data stored in local secure cache');
+      notify(locale === 'ar' ? 'تم حفظ البيانات محلياً' : 'Data stored locally');
     }
   };
 
@@ -143,15 +152,117 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
   };
 
   const tabs = [
+    { id: 'account', labelKey: 'settings.tabs.account', icon: UserIcon },
     { id: 'appearance', labelKey: 'settings.tabs.appearance', icon: Palette },
-    { id: 'language', labelKey: 'settings.tabs.language', icon: Globe },
+    { id: 'desktop', labelKey: 'settings.tabs.desktop', icon: Monitor },
     { id: 'motion', labelKey: 'settings.tabs.motion', icon: Zap },
-    { id: 'cloud', labelKey: 'settings.tabs.cloud', icon: Database },
     { id: 'data', labelKey: 'settings.tabs.data', icon: HardDrive },
+    { id: 'privacy', labelKey: 'settings.tabs.privacy', icon: Shield },
+    { id: 'language', labelKey: 'settings.tabs.language', icon: Globe },
     { id: 'about', labelKey: 'settings.tabs.about', icon: Info },
   ];
 
   const content: Record<string, React.ReactNode> = {
+    account: (
+      <div className="settings-form">
+        <div className="settings-section-heading">
+          <span className="settings-icon"><UserIcon size={16} /></span>
+          <div>
+            <h2>{t('settings.account.title')}</h2>
+            <p>{t('settings.account.desc')}</p>
+          </div>
+        </div>
+
+        {/* User Card */}
+        <div className="account-details-panel panel-subtle">
+          <div className="account-profile-header">
+            <div className="account-big-avatar">
+              {avatarChar}
+              <span className="account-online" />
+            </div>
+            <div className="account-profile-text">
+              <span className="account-profile-name">{displayName}</span>
+              <span className="account-profile-badge mono">
+                <ShieldCheck size={13} className="text-emerald-400" />
+                {t('settings.account.connected')}
+              </span>
+            </div>
+          </div>
+
+          <form className="account-edit-form" onSubmit={handleSaveName}>
+            <div className="form-group">
+              <label htmlFor="settings-email-locked">
+                <span>{t('settings.account.emailLabel')}</span>
+              </label>
+              <div className="locked-input-wrapper">
+                <input
+                  id="settings-email-locked"
+                  type="email"
+                  value={email}
+                  disabled
+                  readOnly
+                  className="locked-input mono"
+                />
+                <Lock size={15} className="locked-icon" />
+              </div>
+              <small className="field-hint text-muted-foreground">{t('settings.account.emailHint')}</small>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="settings-display-name">
+                <span>{t('settings.account.displayName')}</span>
+              </label>
+              <div className="input-with-button">
+                <input
+                  id="settings-display-name"
+                  type="text"
+                  value={inputName}
+                  onChange={(e) => setInputName(e.target.value)}
+                  placeholder="Your Name"
+                  maxLength={40}
+                  className="editable-input"
+                />
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-sm focus-ring"
+                  disabled={savingName || inputName.trim() === displayName || !inputName.trim()}
+                >
+                  <Save size={13} />
+                  {savingName ? (locale === 'ar' ? 'جارٍ الحفظ...' : 'Saving...') : t('settings.account.saveName')}
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <div className="cloud-details-grid">
+            <div>
+              <small>{t('settings.account.accountInfo')}</small>
+              <b className="mono text-xs truncate max-w-[200px] block" title={userId}>
+                UUID: {userId.slice(0, 16)}...
+              </b>
+            </div>
+            <div>
+              <small>{t('settings.account.status')}</small>
+              <b className="mono text-xs text-emerald-400 flex items-center gap-1">
+                <span className="pulse-dot-green" /> {lastSynced ? `${t('common.online')} (${lastSynced})` : t('common.online')}
+              </b>
+            </div>
+          </div>
+        </div>
+
+        <div className="settings-actions">
+          <button className="btn btn-accent focus-ring" disabled={syncingNow} onClick={handleSyncCloud}>
+            <RefreshCw className={syncingNow ? "spin" : ""} size={14} />
+            {syncingNow ? (locale === 'ar' ? 'جاري المزامنة...' : 'Syncing...') : t('settings.account.syncCloud')}
+          </button>
+          <button className="btn btn-ghost text-destructive focus-ring" onClick={() => signOut()}>
+            <LogOut size={14} />
+            {t('settings.account.signOut')}
+          </button>
+        </div>
+      </div>
+    ),
+
     appearance: (
       <div className="settings-form">
         <div className="settings-section-heading">
@@ -194,45 +305,116 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
       </div>
     ),
 
-    language: (
+    desktop: (
       <div className="settings-form">
         <div className="settings-section-heading">
-          <span className="settings-icon"><Globe size={16} /></span>
+          <span className="settings-icon"><Monitor size={16} /></span>
           <div>
-            <h2>{t('settings.language.title')}</h2>
-            <p>{t('settings.language.desc')}</p>
+            <h2>{t('settings.desktop.title')}</h2>
+            <p>{t('settings.desktop.desc')}</p>
           </div>
         </div>
-        <div className="language-cards">
-          <button
-            className={`language-card ${pendingLocale === 'en' ? 'language-active' : ''}`}
-            onClick={() => setPendingLocale('en')}
-          >
-            <span className="language-flag">🇺🇸</span>
-            <b>English</b>
-            <small>LTR · Left to Right</small>
-            {pendingLocale === 'en' && <Check size={14} className="language-check" />}
-          </button>
-          <button
-            className={`language-card ${pendingLocale === 'ar' ? 'language-active' : ''}`}
-            onClick={() => setPendingLocale('ar')}
-          >
-            <span className="language-flag">🇸🇦</span>
-            <b>العربية</b>
-            <small>RTL · يمين إلى يسار</small>
-            {pendingLocale === 'ar' && <Check size={14} className="language-check" />}
-          </button>
-        </div>
-        <div className="settings-actions">
-          <button
-            className="btn btn-accent focus-ring"
-            onClick={handleSaveLocale}
-            disabled={pendingLocale === locale}
-            data-testid="button-save-locale"
-          >
-            <Check size={14} />
-            {t('settings.language.saveApply')}
-          </button>
+
+        <div className="desktop-toggle-list">
+          {/* 1. Auto Start */}
+          <div className="desktop-toggle-row panel-subtle">
+            <div className="desktop-toggle-info">
+              <div className="desktop-toggle-title">
+                <Monitor size={16} className="text-cyan" />
+                <b>{t('settings.desktop.autoLaunchTitle')}</b>
+              </div>
+              <p>{t('settings.desktop.autoLaunchDesc')}</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={autoStart}
+              className={`toggle ${autoStart ? 'toggle-on' : ''}`}
+              onClick={() => {
+                const next = !autoStart;
+                setAutoStart(next);
+                notify(next ? (locale === 'ar' ? 'تم تفعيل التشغيل التلقائي مع الويندوز' : 'Auto-launch enabled') : (locale === 'ar' ? 'تم تعطيل التشغيل التلقائي' : 'Auto-launch disabled'));
+              }}
+              data-testid="toggle-pc-autostart"
+            >
+              <span />
+            </button>
+          </div>
+
+          {/* 2. Run in Background */}
+          <div className="desktop-toggle-row panel-subtle">
+            <div className="desktop-toggle-info">
+              <div className="desktop-toggle-title">
+                <Cpu size={16} className="text-emerald-400" />
+                <b>{t('settings.desktop.backgroundTitle')}</b>
+              </div>
+              <p>{t('settings.desktop.backgroundDesc')}</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={runInBackground}
+              className={`toggle ${runInBackground ? 'toggle-on' : ''}`}
+              onClick={() => {
+                const next = !runInBackground;
+                setRunInBackground(next);
+                notify(next ? (locale === 'ar' ? 'البرنامج سيبقى نشطاً في الخلفية (Tray)' : 'Background tray mode enabled') : (locale === 'ar' ? 'البرنامج سيغلق بالكامل عند الخروج' : 'Background tray mode disabled'));
+              }}
+              data-testid="toggle-pc-background"
+            >
+              <span />
+            </button>
+          </div>
+
+          {/* 3. GPU Hardware Acceleration */}
+          <div className="desktop-toggle-row panel-subtle">
+            <div className="desktop-toggle-info">
+              <div className="desktop-toggle-title">
+                <Zap size={16} className="text-amber-400" />
+                <b>{t('settings.desktop.hardwareTitle')}</b>
+              </div>
+              <p>{t('settings.desktop.hardwareDesc')}</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={gpuAcceleration}
+              className={`toggle ${gpuAcceleration ? 'toggle-on' : ''}`}
+              onClick={() => {
+                const next = !gpuAcceleration;
+                setGpuAcceleration(next);
+                notify(next ? (locale === 'ar' ? 'تم تفعيل تسريع كرت الشاشة GPU' : 'GPU acceleration enabled') : (locale === 'ar' ? 'تم إيقاف تسريع العتاد' : 'GPU acceleration disabled'));
+              }}
+              data-testid="toggle-pc-gpu"
+            >
+              <span />
+            </button>
+          </div>
+
+          {/* 4. Global Hotkeys */}
+          <div className="desktop-toggle-row panel-subtle">
+            <div className="desktop-toggle-info">
+              <div className="desktop-toggle-title">
+                <HardDrive size={16} className="text-purple-400" />
+                <b>{t('settings.desktop.globalHotkeysTitle')}</b>
+              </div>
+              <p>{t('settings.desktop.globalHotkeysDesc')}</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={globalHotkeys}
+              className={`toggle ${globalHotkeys ? 'toggle-on' : ''}`}
+              onClick={() => {
+                const next = !globalHotkeys;
+                setGlobalHotkeys(next);
+                notify(next ? (locale === 'ar' ? 'تم تفعيل اختصارات النظام العامة' : 'Global system hotkeys active') : (locale === 'ar' ? 'تم تعطيل الاختصارات العامة' : 'Global hotkeys disabled'));
+              }}
+              data-testid="toggle-pc-hotkeys"
+            >
+              <span />
+            </button>
+          </div>
         </div>
       </div>
     ),
@@ -246,89 +428,42 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
             <p>{t('settings.motion.desc')}</p>
           </div>
         </div>
-        <div className="motion-cards motion-two-cards">
+        <div className="theme-cards">
+          {/* Mode 1: Minimal */}
           <button
-            className={`motion-card ${motionMode === 'minimal' ? 'motion-active' : ''}`}
+            className={`theme-card ${motionMode === 'minimal' ? 'theme-active' : ''}`}
             onClick={() => applyMotion('minimal')}
+            data-testid="button-motion-minimal"
           >
-            <div className="motion-preview motion-minimal">
-              <span className="motion-dot" /><span className="motion-dot" />
+            <div className="theme-preview theme-preview-dark">
+              <div className="motion-preview-icon minimal-icon">
+                <Zap size={22} className="text-cyan" />
+              </div>
             </div>
-            <div className="motion-card-info">
+            <div className="theme-card-info">
               <b>{t('settings.motion.minimal')}</b>
               <small>{t('settings.motion.minimalDesc')}</small>
             </div>
             {motionMode === 'minimal' && <span className="theme-check"><Check size={14} /></span>}
           </button>
 
+          {/* Mode 2: Cinematic */}
           <button
-            className={`motion-card ${motionMode === 'cinematic' ? 'motion-active' : ''}`}
+            className={`theme-card ${motionMode === 'cinematic' ? 'theme-active' : ''}`}
             onClick={() => applyMotion('cinematic')}
+            data-testid="button-motion-cinematic"
           >
-            <div className="motion-preview motion-cinematic">
-              <span className="motion-dot" /><span className="motion-dot" /><span className="motion-dot" />
+            <div className="theme-preview theme-preview-dark">
+              <div className="motion-preview-icon cinematic-icon">
+                <span className="motion-ring" />
+                <span className="motion-dot" />
+              </div>
             </div>
-            <div className="motion-card-info">
+            <div className="theme-card-info">
               <b>{t('settings.motion.cinematic')}</b>
               <small>{t('settings.motion.cinematicDesc')}</small>
             </div>
             {motionMode === 'cinematic' && <span className="theme-check"><Check size={14} /></span>}
-          </button>
-        </div>
-      </div>
-    ),
-
-    cloud: (
-      <div className="settings-form">
-        <div className="settings-section-heading">
-          <span className="settings-icon"><Database size={16} /></span>
-          <div>
-            <h2>{t('settings.cloud.title')}</h2>
-            <p>{t('settings.cloud.desc')}</p>
-          </div>
-        </div>
-
-        <div className="cloud-status-panel panel-subtle">
-          <div className="cloud-status-row">
-            <div>
-              <small className="mono uppercase tracking-wider text-muted-foreground">{t('settings.cloud.status')}</small>
-              <div className="cloud-indicator">
-                <span className="pulse-dot-green" />
-                <strong>{t('settings.cloud.connected')}</strong>
-              </div>
-            </div>
-            <span className="connection-status connected">{connectionStatus}</span>
-          </div>
-
-          <div className="cloud-info-box">
-            <ShieldCheck size={16} className="text-[hsl(var(--primary))]" />
-            <span>{t('settings.cloud.authProtected')}</span>
-          </div>
-
-          <div className="cloud-details-grid">
-            <div>
-              <small>{t('settings.cloud.accountInfo')}</small>
-              <b className="mono text-xs truncate max-w-[200px] block" title={email}>{email}</b>
-            </div>
-            <div>
-              <small>{t('settings.cloud.database')}</small>
-              <b className="mono text-xs truncate max-w-[200px] block" title={userId}>ID: {userId.slice(0, 12)}...</b>
-            </div>
-          </div>
-        </div>
-
-        <div className="settings-actions">
-          <button className="btn btn-outline focus-ring" disabled={checkingCloud} onClick={testSupabaseConnection}>
-            {checkingCloud ? <RefreshCw className="spin" size={14} /> : <Zap size={14} />}
-            {t('settings.cloud.testConnection')}
-          </button>
-          <button className="btn btn-accent focus-ring" disabled={syncingNow} onClick={handleSyncCloud}>
-            <RefreshCw className={syncingNow ? "spin" : ""} size={14} />
-            {syncingNow ? (locale === 'ar' ? 'جاري المزامنة...' : 'Syncing...') : t('settings.cloud.syncCloud')}
-          </button>
-          <button className="btn btn-ghost text-destructive focus-ring" onClick={() => signOut()}>
-            <LogOut size={14} />
-            {t('settings.cloud.signOut')}
           </button>
         </div>
       </div>
@@ -367,6 +502,96 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
         <div className="settings-actions">
           <button className="btn btn-ghost text-destructive focus-ring" onClick={clearCache}>
             {t('settings.data.clearCache')}
+          </button>
+        </div>
+      </div>
+    ),
+
+    privacy: (
+      <div className="settings-form">
+        <div className="settings-section-heading">
+          <span className="settings-icon"><Shield size={16} /></span>
+          <div>
+            <h2>{t('settings.privacy.title')}</h2>
+            <p>{t('settings.privacy.desc')}</p>
+          </div>
+        </div>
+
+        <div className="privacy-cards-grid">
+          {/* 1. Isolation */}
+          <div className="privacy-card panel-subtle">
+            <div className="privacy-card-icon-wrap">
+              <Lock size={18} className="text-cyan" />
+            </div>
+            <div className="privacy-card-content">
+              <b>{t('settings.privacy.isolationTitle')}</b>
+              <p>{t('settings.privacy.isolationDesc')}</p>
+            </div>
+          </div>
+
+          {/* 2. Encryption */}
+          <div className="privacy-card panel-subtle">
+            <div className="privacy-card-icon-wrap">
+              <ShieldCheck size={18} className="text-emerald-400" />
+            </div>
+            <div className="privacy-card-content">
+              <b>{t('settings.privacy.encryptionTitle')}</b>
+              <p>{t('settings.privacy.encryptionDesc')}</p>
+            </div>
+          </div>
+
+          {/* 3. Zero Ads */}
+          <div className="privacy-card panel-subtle">
+            <div className="privacy-card-icon-wrap">
+              <Eye size={18} className="text-purple-400" />
+            </div>
+            <div className="privacy-card-content">
+              <b>{t('settings.privacy.noTrackingTitle')}</b>
+              <p>{t('settings.privacy.noTrackingDesc')}</p>
+            </div>
+          </div>
+
+          {/* 4. Full Portability */}
+          <div className="privacy-card panel-subtle">
+            <div className="privacy-card-icon-wrap">
+              <HardDrive size={18} className="text-amber-400" />
+            </div>
+            <div className="privacy-card-content">
+              <b>{t('settings.privacy.ownershipTitle')}</b>
+              <p>{t('settings.privacy.ownershipDesc')}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    ),
+
+    language: (
+      <div className="settings-form">
+        <div className="settings-section-heading">
+          <span className="settings-icon"><Globe size={16} /></span>
+          <div>
+            <h2>{t('settings.language.title')}</h2>
+            <p>{t('settings.language.desc')}</p>
+          </div>
+        </div>
+        <div className="form-group">
+          <label htmlFor="settings-app-language">
+            <span>{t('settings.language.appLanguage')}</span>
+          </label>
+          <select
+            id="settings-app-language"
+            value={pendingLocale}
+            onChange={(e) => setPendingLocale(e.target.value as Locale)}
+            className="settings-select"
+          >
+            <option value="en">{t('settings.language.english')}</option>
+            <option value="ar">{t('settings.language.arabic')}</option>
+          </select>
+        </div>
+        <div className="settings-actions">
+          <button className="btn btn-accent focus-ring" onClick={handleSaveLocale}>
+            <Check size={14} />
+            {t('settings.language.saveApply')}
           </button>
         </div>
       </div>

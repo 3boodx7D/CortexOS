@@ -4,8 +4,8 @@
     "version": "LOCAL / 02",
     "systemReady": "SYSTEM READY",
     "allNominal": "All systems nominal",
-    "supabaseCluster": "SUPABASE CLUSTER · GLOBAL READY",
-    "syncBadge": "Supabase Cloud · Synced",
+    "supabaseCluster": "ENCRYPTED CLOUD SYNC · CONNECTED",
+    "syncBadge": "Encrypted Sync · Active",
     "commandSearch": "Command search",
     "commandPlaceholder": "Try \"open projects\" or \"start focus mode\""
   },
@@ -47,8 +47,8 @@
     "turboBalanced": "Balanced performance",
     "turboEnabled": "Turbo Mode enabled — priority boosted",
     "turboDisabled": "Turbo Mode disabled — balanced profile",
-    "supabaseCloud": "Supabase Cloud DB",
-    "supabaseDesc": "Central Cluster · 100k+ Scale",
+    "supabaseCloud": "Secure Cloud Sync",
+    "supabaseDesc": "Real-time end-to-end encryption",
     "dynamicIsland": "Dynamic Island",
     "liveTelemetry": "LIVE TELEMETRY",
     "available": "AVAILABLE"
@@ -161,12 +161,31 @@
     "title": "Settings",
     "subtitle": "System-only controls for this local cockpit.",
     "tabs": {
+      "account": "Account & Sync",
       "appearance": "Appearance & Theme",
-      "language": "Language & Region",
+      "desktop": "Desktop App (PC)",
       "motion": "Motion & Animation",
-      "cloud": "Cloud & Account",
       "data": "Backup & Restore",
+      "privacy": "Privacy & Security",
+      "language": "Language & Region",
       "about": "System & Version"
+    },
+    "account": {
+      "title": "Account & Cloud Sync",
+      "desc": "Manage your profile identity, user credentials, and encrypted cloud sync.",
+      "profileInfo": "User Profile",
+      "emailLabel": "Email Address (Locked & Verified)",
+      "emailHint": "Email is permanently bound to your account for identity security.",
+      "displayName": "Display Name",
+      "saveName": "Save Name",
+      "nameUpdated": "Display name updated successfully",
+      "status": "Cloud Sync Status",
+      "connected": "Connected & Synchronized",
+      "authProtected": "End-to-end encrypted session via cryptographic security tokens.",
+      "accountInfo": "Active Session",
+      "syncCloud": "Sync Cloud Data Now",
+      "syncSuccess": "All user data synchronized to cloud securely",
+      "signOut": "Sign Out from Account"
     },
     "appearance": {
       "title": "Appearance & Theme",
@@ -175,6 +194,30 @@
       "obsidianDesc": "Deep dark executive interface. Minimal eye strain.",
       "titanium": "Titanium Light",
       "titaniumDesc": "Clean, bright professional workspace."
+    },
+    "desktop": {
+      "title": "Desktop App Settings (PC)",
+      "desc": "Native desktop behavior and system integration options for PC.",
+      "autoLaunchTitle": "Launch on System Startup (Auto-Start)",
+      "autoLaunchDesc": "Automatically start CortexOS when Windows boots up so your workspace is ready immediately.",
+      "backgroundTitle": "Keep Running in Background (System Tray)",
+      "backgroundDesc": "When closing the window, keep CortexOS running silently in the system tray for instant alerts and radar tracking.",
+      "hardwareTitle": "Hardware & GPU Acceleration",
+      "hardwareDesc": "Use discrete GPU acceleration for 60FPS fluid interface rendering and smooth animations.",
+      "globalHotkeysTitle": "Global System Hotkeys",
+      "globalHotkeysDesc": "Press Ctrl + Space or Alt + C anywhere in Windows to immediately open the Command Radar."
+    },
+    "privacy": {
+      "title": "Privacy Policy & Data Security",
+      "desc": "Your data belongs exclusively to you. Our transparent privacy commitment.",
+      "isolationTitle": "Strict Data Isolation",
+      "isolationDesc": "Your projects, deadlines, and study notes are isolated per account and completely inaccessible to other users.",
+      "encryptionTitle": "End-to-End Encryption",
+      "encryptionDesc": "All network transmissions and storage access are secured with industry-standard TLS encryption protocols.",
+      "noTrackingTitle": "Zero Ads, Zero Tracking, Zero Data Selling",
+      "noTrackingDesc": "We do not sell personal data, log browsing habits, or share any information with third-party advertising networks.",
+      "ownershipTitle": "Full Data Portability & GDPR Compliance",
+      "ownershipDesc": "You retain 100% ownership of your data. Export your full archive (JSON) or clear your cache anytime."
     },
     "language": {
       "title": "Language & Region",
@@ -192,22 +235,6 @@
       "minimalDesc": "Instant, crisp transitions without delays. Ideal for fast workflows.",
       "cinematic": "Fluid & Cinematic",
       "cinematicDesc": "Rich page entrance animations, staggered cards, and depth transitions."
-    },
-    "cloud": {
-      "title": "Cloud & Account",
-      "desc": "Connected to central Supabase PostgreSQL cluster with Row-Level Security.",
-      "status": "Cluster Status",
-      "connected": "Connected & Operational",
-      "database": "PostgreSQL Global Cluster (100k+ Users Capacity)",
-      "syncCloud": "Sync Cloud Database",
-      "syncTriggered": "Cloud sync initiated",
-      "testConnection": "Test Connection Latency",
-      "verified": "Supabase cluster verified",
-      "failed": "Failed to reach Supabase",
-      "gatewayActive": "Cloud gateway active",
-      "accountInfo": "Active Session",
-      "authProtected": "End-to-end encrypted session via Supabase Auth & RLS.",
-      "signOut": "Sign Out from CortexOS"
     },
     "data": {
       "title": "Backup & Restore",
@@ -232,9 +259,9 @@
       "channel": "Release Channel",
       "channelValue": "Public Preview / Beta 0.2",
       "architecture": "Architecture",
-      "architectureValue": "Modular Clean Architecture (TypeScript + React + Supabase)",
+      "architectureValue": "Modular Clean Architecture (TypeScript + React Client)",
       "cluster": "Database Cluster",
-      "clusterValue": "Supabase PostgreSQL · Enterprise Tier",
+      "clusterValue": "Enterprise Cloud Sync Engine",
       "status": "System Status",
       "allNominal": "All systems nominal & active"
     }

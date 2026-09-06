@@ -310,9 +310,22 @@
 [data-theme="light"] .about-item b {
   color: hsl(220 22% 12%) !important;
 }
+[data-theme="light"] .account-details-panel,
+[data-theme="light"] .desktop-toggle-row,
+[data-theme="light"] .privacy-card,
 [data-theme="light"] .cloud-status-panel {
   background: hsl(220 16% 97%) !important;
   border: 1px solid hsl(220 14% 88%) !important;
+}
+[data-theme="light"] .locked-input {
+  background: hsl(220 14% 93%) !important;
+  border-color: hsl(220 14% 85%) !important;
+  color: hsl(220 12% 40%) !important;
+}
+[data-theme="light"] .editable-input {
+  background: #ffffff !important;
+  border-color: hsl(220 14% 85%) !important;
+  color: hsl(220 22% 12%) !important;
 }
 
 [data-theme="light"] .project-row {
@@ -947,23 +960,102 @@
 .motion-card-info small { font-size: 11px; line-height: 1.4; color: hsl(var(--muted-foreground)); }
 
 /* ── Cloud Status Panel ── */
-.cloud-status-panel {
-  padding: 22px; border-radius: 14px; margin-bottom: 22px;
+/* ── Account Details Panel ── */
+.account-details-panel {
+  padding: 24px; border-radius: 14px; margin-bottom: 22px;
+  display: flex; flex-direction: column; gap: 20px;
+}
+.account-profile-header {
+  display: flex; align-items: center; gap: 16px;
+}
+.account-big-avatar {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: hsl(var(--primary) / 0.15); color: hsl(var(--primary));
+  font-size: 22px; font-weight: 700; display: grid; place-items: center;
+  position: relative; border: 2px solid hsl(var(--primary) / 0.35);
+  box-shadow: 0 0 16px hsl(var(--primary) / 0.25);
+}
+.account-profile-text {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.account-profile-name {
+  font-size: 17px; font-weight: 700; color: hsl(var(--foreground));
+}
+.account-profile-badge {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 11px;
+  color: #10b981; font-weight: 500;
+}
+.account-edit-form {
   display: flex; flex-direction: column; gap: 16px;
 }
-.cloud-status-row {
+.locked-input-wrapper {
+  position: relative; display: flex; align-items: center;
+}
+.locked-input {
+  width: 100%; height: 42px; padding: 0 14px; padding-inline-end: 38px;
+  background: hsl(var(--secondary) / 0.6) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  border-radius: 9px; font-size: 13px; cursor: not-allowed;
+  user-select: none; opacity: 0.85;
+}
+.locked-icon {
+  position: absolute; inset-inline-end: 12px;
+  color: hsl(var(--muted-foreground) / 0.7); pointer-events: none;
+}
+.input-with-button {
+  display: flex; gap: 10px; align-items: center;
+}
+.editable-input {
+  flex: 1; height: 42px; padding: 0 14px;
+  background: hsl(var(--card)); border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground)); border-radius: 9px; font-size: 14px;
+  transition: all var(--motion-duration) var(--motion-ease);
+}
+.editable-input:focus {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
+  outline: none;
+}
+
+/* ── Desktop Toggle List (PC Settings) ── */
+.desktop-toggle-list {
+  display: flex; flex-direction: column; gap: 12px; margin-top: 14px;
+}
+.desktop-toggle-row {
   display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-radius: 12px; gap: 20px;
 }
-.cloud-indicator {
-  display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 16px;
+.desktop-toggle-info {
+  display: flex; flex-direction: column; gap: 4px;
 }
-.cloud-info-box {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 16px; border-radius: 10px;
-  background: hsl(var(--primary) / .08);
-  border: 1px solid hsl(var(--primary) / .22);
-  font-size: 12px; color: hsl(var(--foreground));
+.desktop-toggle-title {
+  display: flex; align-items: center; gap: 10px; font-size: 14px;
 }
+.desktop-toggle-info p {
+  font-size: 12px; color: hsl(var(--muted-foreground)); line-height: 1.45; margin: 0;
+}
+
+/* ── Privacy Cards Grid ── */
+.privacy-cards-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px;
+}
+.privacy-card {
+  display: flex; gap: 14px; padding: 18px; border-radius: 12px; align-items: flex-start;
+}
+.privacy-card-icon-wrap {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: hsl(var(--primary) / 0.12); display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.privacy-card-content b {
+  display: block; font-size: 14px; margin-bottom: 5px; color: hsl(var(--foreground));
+}
+.privacy-card-content p {
+  font-size: 12px; color: hsl(var(--muted-foreground)); line-height: 1.5; margin: 0;
+}
+
+/* ── Cloud & Details Grid ── */
 .cloud-details-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
   padding-top: 14px; border-top: 1px solid hsl(var(--border));
