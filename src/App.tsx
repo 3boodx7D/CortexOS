@@ -22,7 +22,7 @@ function App() {
   const locale = getStoredLocale();
   const [toast, setToast] = useState('');
   const [theme] = usePersistent<'dark' | 'light'>('cortex-theme', 'dark');
-  const [motion] = usePersistent<string>('cortex-motion', 'balanced');
+  const [motion] = usePersistent<string>('cortex-motion', 'cinematic');
 
   useEffect(() => {
     document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
@@ -31,9 +31,9 @@ function App() {
     document.documentElement.setAttribute('data-motion', motion);
   }, [locale, theme, motion]);
 
-  const notify = (message: string) => {
-    setToast(message);
-    window.setTimeout(() => setToast(''), 2400);
+  // Silent notification handler - no annoying bottom blue toasts
+  const notify = (_message: string) => {
+    // Quiet operation
   };
 
   return (

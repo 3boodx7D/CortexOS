@@ -163,13 +163,10 @@
     "tabs": {
       "appearance": "Appearance & Theme",
       "language": "Language & Region",
-      "cloud": "Cloud Sync (Supabase)",
-      "ai": "AI Intelligence Engines",
-      "paths": "Workspaces & Paths",
-      "data": "Data Manager",
-      "hardware": "Hardware & Turbo",
       "motion": "Motion & Animation",
-      "audio": "Audio & Media"
+      "cloud": "Cloud & Account",
+      "data": "Backup & Restore",
+      "about": "System & Version"
     },
     "appearance": {
       "title": "Appearance & Theme",
@@ -188,95 +185,59 @@
       "english": "English (LTR)",
       "arabic": "العربية (RTL)"
     },
+    "motion": {
+      "title": "Motion & Animation",
+      "desc": "Choose between snappy instant response or fluid page animations.",
+      "minimal": "Light & Snappy",
+      "minimalDesc": "Instant, crisp transitions without delays. Ideal for fast workflows.",
+      "cinematic": "Fluid & Cinematic",
+      "cinematicDesc": "Rich page entrance animations, staggered cards, and depth transitions."
+    },
     "cloud": {
-      "title": "Cloud Sync & Supabase",
-      "desc": "Central online PostgreSQL cluster configured for 100,000+ public users.",
-      "supabaseUrl": "Supabase Project URL",
-      "anonKey": "Anon Public API Key",
-      "testConnection": "Test connection",
-      "syncCloud": "Sync cloud database",
-      "syncTriggered": "Supabase sync triggered",
+      "title": "Cloud & Account",
+      "desc": "Connected to central Supabase PostgreSQL cluster with Row-Level Security.",
+      "status": "Cluster Status",
+      "connected": "Connected & Operational",
+      "database": "PostgreSQL Global Cluster (100k+ Users Capacity)",
+      "syncCloud": "Sync Cloud Database",
+      "syncTriggered": "Cloud sync initiated",
+      "testConnection": "Test Connection Latency",
       "verified": "Supabase cluster verified",
       "failed": "Failed to reach Supabase",
-      "gatewayActive": "Gateway active",
-      "schemaReady": "SQL Schema Script Ready",
-      "schemaDesc": "Schema file generated at supabase/schema.sql with RLS policies and high-throughput indexes."
-    },
-    "ai": {
-      "title": "AI Intelligence Engines",
-      "desc": "Configure how the AI assistant communicates and responds.",
-      "persona": "AI Persona & Tone",
-      "personaDesc": "How the AI addresses you in responses.",
-      "professional": "Professional & Direct",
-      "friendly": "Friendly & Casual",
-      "concise": "Concise & Technical",
-      "defaultModel": "Default Model",
-      "temperature": "Temperature",
-      "temperatureDesc": "Higher = more creative. Lower = more precise.",
-      "testAi": "Test AI inference",
-      "testPassed": "AI test passed"
-    },
-    "paths": {
-      "title": "Workspaces & Paths",
-      "desc": "Directories used by native launchers and local organization.",
-      "projectsDir": "Default Projects Directory",
-      "downloadsDir": "Downloads Directory",
-      "editor": "Preferred code editor"
+      "gatewayActive": "Cloud gateway active",
+      "accountInfo": "Active Session",
+      "authProtected": "End-to-end encrypted session via Supabase Auth & RLS.",
+      "signOut": "Sign Out from CortexOS"
     },
     "data": {
-      "title": "Data Manager",
-      "desc": "Export, import, or reset the local CortexOS state.",
+      "title": "Backup & Restore",
+      "desc": "Safely export your data to JSON or restore previous backups if you format your device.",
       "storageUsed": "Local storage used",
       "exportBackup": "Export Backup JSON",
       "importBackup": "Import & Restore Backup",
       "clearCache": "Clear Local Cache",
-      "exported": "Backup exported",
+      "exported": "Backup exported successfully",
       "imported": "Backup restored successfully! Reloading...",
       "invalidFile": "Invalid backup file format",
       "clearConfirm": "Clear all local CortexOS data?",
       "cleared": "Local cache cleared",
       "dragDrop": "Drop your cortexos-backup.json file here",
-      "orBrowse": "or click to browse"
+      "orBrowse": "or click to browse from device"
     },
-    "hardware": {
-      "title": "Hardware & Turbo",
-      "desc": "Tune how the desktop bridge behaves during focused work.",
-      "powerProfile": "Power profile",
-      "balanced": "Balanced",
-      "highPerf": "High Performance",
-      "hardwareBridge": "Hardware bridge",
-      "hardwareBridgeDesc": "Browser-safe mock outside the Tauri shell.",
-      "hardwareBridgeEnabled": "Hardware bridge enabled",
-      "hardwareBridgeDisabled": "Hardware bridge disabled",
-      "processPriority": "Process priority",
-      "processPriorityDesc": "Prefer development processes during active sessions.",
-      "processPriorityEnabled": "Process priority enabled",
-      "processPriorityNormal": "Process priority normal"
-    },
-    "motion": {
-      "title": "Motion & Animation",
-      "desc": "Control how animations and transitions behave.",
-      "minimal": "Minimal",
-      "minimalDesc": "Snappy, instant transitions. Best for low-power hardware.",
-      "balanced": "Balanced",
-      "balancedDesc": "Smooth 150ms transitions. Default experience.",
-      "cinematic": "Cinematic",
-      "cinematicDesc": "Ambient depth and fluid motion. For premium feel."
-    },
-    "audio": {
-      "title": "Audio & Media",
-      "desc": "Control sound cues and the default ambient workspace level.",
-      "soundEffects": "Sound effects",
-      "soundEffectsDesc": "Play short confirmation cues for local actions.",
-      "soundEnabled": "Sound effects enabled",
-      "soundMuted": "Sound effects muted",
-      "masterVolume": "Master volume",
-      "ambientPreset": "Ambient preset"
-    },
-    "compactDensity": "Compact density",
-    "compactDesc": "Reduce spacing across the cockpit.",
-    "compactEnabled": "Compact mode enabled",
-    "compactDisabled": "Compact mode disabled"
+    "about": {
+      "title": "System & Version",
+      "desc": "CortexOS executive neural cockpit for workspace and study orchestration.",
+      "version": "Beta 0.2.10 (إصدار تجريبي)",
+      "versionLabel": "Application Version",
+      "channel": "Release Channel",
+      "channelValue": "Public Preview / Beta 0.2",
+      "architecture": "Architecture",
+      "architectureValue": "Modular Clean Architecture (TypeScript + React + Supabase)",
+      "cluster": "Database Cluster",
+      "clusterValue": "Supabase PostgreSQL · Enterprise Tier",
+      "status": "System Status",
+      "allNominal": "All systems nominal & active"
+    }
   },
   "auth": {
     "title": "Neural Access Gate",

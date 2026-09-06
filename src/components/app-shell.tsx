@@ -89,6 +89,11 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
         >
           <Settings2 size={17} /><span>{t('nav.settings')}</span>
         </Link>
+
+        <div className="sidebar-version-badge mono" data-testid="badge-sidebar-version">
+          <span className="version-dot" />
+          <span>{locale === 'ar' ? 'اصدار تجريبي 0.2.10' : 'Beta 0.2.10'}</span>
+        </div>
       </aside>
 
       {mobileNav && <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMobileNav(false)} />}
@@ -115,7 +120,11 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
         <div className="page-wrap page-in" key={location}>{children}</div>
       </main>
 
-      {toast && <div className="toast" role="status" data-testid="status-toast"><Check size={15} />{toast}</div>}
+      {/* Version badge in bottom corner */}
+      <div className="bottom-corner-badge mono" data-testid="badge-corner-version">
+        <span className="version-dot" />
+        <span>{locale === 'ar' ? 'اصدار تجريبي 0.2.10' : 'Beta 0.2.10'}</span>
+      </div>
 
       {searchOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setSearchOpen(false); }}>
