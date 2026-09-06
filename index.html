@@ -27,6 +27,12 @@
           } else {
             document.documentElement.classList.remove('dark');
           }
+          var rawMotion = localStorage.getItem('cortex-motion');
+          var motion = 'cinematic';
+          if (rawMotion) {
+            try { motion = JSON.parse(rawMotion); } catch(e) { motion = rawMotion; }
+          }
+          document.documentElement.setAttribute('data-motion', motion);
         } catch (e) {}
       })();
     </script>

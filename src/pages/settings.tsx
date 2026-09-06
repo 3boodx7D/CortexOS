@@ -441,8 +441,10 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
             </button>
           ))}
         </nav>
-        <section className="settings-content" role="tabpanel" key={activeTab}>
-          {content[activeTab]}
+        <section className="settings-content" role="tabpanel">
+          <div className="settings-tab-pane" key={activeTab}>
+            {content[activeTab]}
+          </div>
         </section>
       </div>
     </div>

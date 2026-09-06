@@ -1000,12 +1000,20 @@
 
 /* ── Mode 1: Light & Snappy (خفيف وسريع - فوري وبدون أي قفزات) ── */
 [data-motion="minimal"] .page-in,
-[data-motion="minimal"] .page-in * {
+[data-motion="minimal"] .page-in *,
+[data-motion="minimal"] .settings-tab-pane,
+[data-motion="minimal"] .settings-tab-pane * {
   animation: none !important;
 }
 [data-motion="minimal"] * {
-  transition-duration: 60ms !important;
+  transition-duration: 0ms !important;
   animation-duration: 0ms !important;
+}
+[data-motion="minimal"] .pulse-dot,
+[data-motion="minimal"] .pulse-dot-green,
+[data-motion="minimal"] .tiny-led,
+[data-motion="minimal"] .motion-dot {
+  animation: none !important;
 }
 
 /* ── Mode 2: Fluid & Cinematic (سينمائي سلس ومدروس بدون تعويق) ── */
@@ -1030,6 +1038,53 @@
 [data-motion="cinematic"] .btn-accent:hover {
   transform: translateY(-1px);
   box-shadow: 0 0 16px hsl(var(--primary) / .35);
+}
+
+/* ── Settings Tab Switching Animation (Fluid & Cinematic - Unified across ALL 6 tabs) ── */
+[data-motion="cinematic"] .settings-tab-pane {
+  animation: settings-tab-enter 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+[data-motion="cinematic"] .settings-tab-pane .settings-section-heading {
+  animation: settings-item-cascade 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+[data-motion="cinematic"] .settings-tab-pane .theme-cards,
+[data-motion="cinematic"] .settings-tab-pane .language-cards,
+[data-motion="cinematic"] .settings-tab-pane .motion-cards,
+[data-motion="cinematic"] .settings-tab-pane .cloud-status-panel,
+[data-motion="cinematic"] .settings-tab-pane .import-dropzone,
+[data-motion="cinematic"] .settings-tab-pane .about-hero {
+  animation: settings-item-cascade 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 35ms;
+}
+
+[data-motion="cinematic"] .settings-tab-pane .settings-actions,
+[data-motion="cinematic"] .settings-tab-pane .about-footer-status {
+  animation: settings-item-cascade 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 65ms;
+}
+
+@keyframes settings-tab-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes settings-item-cascade {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes cortex-page-cinematic {
