@@ -1,0 +1,51 @@
+Please apply these 6 critical visual and architectural refinements right now:
+
+### 1. 🔤 TYPOGRAPHY: KILL THE MONOSPACE TERMINAL FONT
+- Remove the retro typewriter/monospace font entirely. It looks like an outdated terminal.
+- Switch the entire application to an executive, modern sans-serif: **Inter** or **Geist** (`font-sans`).
+- Numbers, titles, and labels must look clean, balanced, and premium (like Linear.app or Vercel).
+
+### 2. 🧹 ULTRA-CLEAN HEADER (REMOVE FAKE ISLAND & MOVE LANGUAGE TO SETTINGS)
+- **REMOVE the fake island capsule (`Soft Reset 04:12 FOCUS`) from the header completely**.
+- **REMOVE the Language Switcher (`EN / ع`) from the header**. The language selection belongs inside the **Settings** page so the header stays clean and uncluttered.
+- The header should now be spacious and minimal:
+  - Left: Simple, subtle breadcrumb/title (`CORTEX / OVERVIEW`).
+  - Right: Quick Search (`Ctrl+K`) and Cloud Sync status pill only.
+
+### 3. ✨ SMOOTH, TASTEFUL MICRO-ANIMATIONS (NO MORE ABRUPT SNAPPING)
+- Page changes and tab switches are currently jarring and snap abruptly.
+- Add a gentle, high-end micro-transition using Framer Motion (or CSS):
+  - Subtle 150ms fade-in with a slight 4px vertical ease-in-out (`opacity: 0 -> 1`, `y: 4px -> 0px`).
+  - Smooth 150ms color transitions on button hovers and active states.
+  - The UI must feel alive, fluid, and responsive, never choppy or snapping.
+
+### 4. 📑 SIDEBAR CATEGORIZATION & USER ACCOUNT PILL
+- Group the sidebar navigation into **3 distinct, clean categories** with subtle uppercase labels:
+  1. **WORKSPACE / مساحة العمل**:
+     - Overview
+     - Projects Vault
+  2. **ACADEMIC & FOCUS / الدراسة والإنجاز**:
+     - Study Hub
+     - Deadline Radar
+  3. **UTILITIES / الأدوات**:
+     - Game Hub
+     - Music Lounge
+     - Clean Janitor
+- **Bottom of Sidebar**:
+  - **DELETE the `LOCAL SYSTEM v0.8.4` temperature/battery box completely**.
+  - Replace it with a sleek **User Account Card**:
+    - Avatar initial "A", Name: **Abdulrahman**, Subtitle: **Founder & Student**, with a subtle green online status dot.
+  - The **Settings** link sits cleanly right below or next to the user profile card.
+
+### 5. ⚙️ PROFESSIONAL TABBED SETTINGS (FEATURING LANGUAGE SELECTION)
+- Remove the messy 2-column square cards in Settings!
+- Use a professional **Tabbed Layout** (horizontal or inner sidebar tabs):
+  - **Tabs**: `General & Language`, `Cloud Sync (Supabase)`, `Workspaces & Paths`, `Data Manager`, `Hardware & Turbo`, `Audio & Media`.
+  - **In `General & Language` Tab**:
+    - Add the primary **App Language selector** (`العربية (RTL)` vs `English (LTR)`). Changing it immediately switches the entire app language and mirrors the layout smoothly.
+  - **In `Cloud Sync` Tab**: Real text inputs for Supabase URL and Anon Key with a "Test Connection" button.
+  - **In `Paths` Tab**: Real text inputs for default Projects path (`d:\dev26-27`) and Downloads path.
+  - **In `Data Manager` Tab**: Clean buttons to "Export Backup JSON" and "Clear Local Cache".
+
+### 6. 🎨 POLISH & CONTRAST
+- Maintain deep black `#050505`, razor-thin zinc borders (`border-zinc-800/80`), and high-contrast text.
