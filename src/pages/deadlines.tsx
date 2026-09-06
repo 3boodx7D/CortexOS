@@ -1,7 +1,7 @@
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import { CalendarClock, Plus, X } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
-import { usePersistent } from '@/hooks/use-persistent';
+import { useUserPersistent } from '@/lib/user-store';
 
 type Deadline = { id: string; title: string; course: string; date: string; priority: 'high' | 'medium' | 'low' };
 
@@ -40,7 +40,7 @@ function Modal({ title, children, onClose }: { title: string; children: ReactNod
 
 export default function Deadlines({ notify }: { notify: (msg: string) => void }) {
   const { t } = useTranslation();
-  const [deadlines, setDeadlines] = usePersistent<Deadline[]>('cortex-deadlines', seedDeadlines);
+  const [deadlines, setDeadlines] = useUserPersistent<Deadline[]>('deadlines', seedDeadlines);
   const [adding, setAdding] = useState(false);
   const [, tick] = useState(0);
   useEffect(() => { const timer = window.setInterval(() => tick((v) => v + 1), 60000); return () => window.clearInterval(timer); }, []);

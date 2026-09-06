@@ -1,20 +1,23 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import {
   BrainCircuit, CheckCircle2, Loader2, Lock, Moon,
-  ShieldCheck, Sparkles, Sun, Zap,
+  ShieldCheck, Sparkles, Sun,
 } from 'lucide-react';
 import { signIn, signUp, onAuthStateChange, getSession } from '@/lib/supabase';
 import { useTranslation, saveLocaleAndReload } from '@/lib/i18n';
 import { usePersistent } from '@/hooks/use-persistent';
+import { UserStoreProvider } from '@/lib/user-store';
 import type { Session } from '@supabase/supabase-js';
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [isGuest, setIsGuest] = useState<boolean>(() => {
-    return localStorage.getItem('cortex-guest-mode') === 'true';
-  });
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = usePersistent<'dark' | 'light'>('cortex-theme', 'dark');
+
+  useEffect(() => {
+    // Purge any guest mode token
+    localStorage.removeItem('cortex-guest-mode');
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -65,25 +68,22 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!session && !isGuest) {
+  if (!session) {
     return (
       <LoginScreen
-        onGuestAccess={() => setIsGuest(true)}
         theme={theme}
         onToggleTheme={handleToggleTheme}
       />
     );
   }
 
-  return <>{children}</>;
+  return <UserStoreProvider session={session}>{children}</UserStoreProvider>;
 }
 
 function LoginScreen({
-  onGuestAccess,
   theme,
   onToggleTheme,
 }: {
-  onGuestAccess: () => void;
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
 }) {
@@ -118,11 +118,6 @@ function LoginScreen({
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleGuestLogin = () => {
-    localStorage.setItem('cortex-guest-mode', 'true');
-    onGuestAccess();
   };
 
   return (
@@ -261,22 +256,6 @@ function LoginScreen({
             }}
           >
             {isSignUp ? t('auth.signIn') : t('auth.signUp')}
-          </button>
-        </div>
-
-        {/* Quick guest demo button for instantaneous frictionless access */}
-        <div className="auth-guest-section">
-          <div className="auth-divider">
-            <span>OR</span>
-          </div>
-          <button
-            type="button"
-            className="btn btn-outline auth-guest-btn"
-            onClick={handleGuestLogin}
-            title={t('auth.guestHint')}
-          >
-            <Zap size={15} className="text-[hsl(var(--primary))]" />
-            <span>{t('auth.guestButton')}</span>
           </button>
         </div>
 

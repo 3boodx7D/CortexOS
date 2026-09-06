@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { signOut } from '@/lib/supabase';
+import { useUserContext } from '@/lib/user-store';
 
 const navItems = [
   { href: '/overview', labelKey: 'nav.overview', icon: LayoutDashboard },
@@ -26,41 +27,50 @@ const navGroups = [
 
 export function AppShell({ children, toast }: { children: ReactNode; toast: string }) {
   const { t, locale } = useTranslation();
+  const { displayName, email, avatarChar } = useUserContext();
   const [location] = useLocation();
   const [mobileNav, setMobileNav] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch {
-      // session cleared locally regardless
-    }
+    await signOut();
   };
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-testid="app-shell-root">
+      {/* Toast notification */}
+      {toast && (
+        <div className="toast panel" role="status" aria-live="polite">
+          <Check size={16} /><span>{toast}</span>
+        </div>
+      )}
+
+      {/* Sidebar */}
       <aside className={`sidebar ${mobileNav ? 'sidebar-open' : ''}`}>
         <div className="brand-lockup">
-          <div className="brand-mark"><BrainCircuit size={19} /></div>
-          <div><strong>CORTEX<span>OS</span></strong><small className="mono">LOCAL / 02</small></div>
-          <button className="btn btn-ghost mobile-close" onClick={() => setMobileNav(false)} aria-label="Close navigation"><X size={17} /></button>
+          <div className="brand-mark">
+            <BrainCircuit size={22} />
+          </div>
+          <div>
+            <strong>CORTEX<span>OS</span></strong>
+            <small className="mono">LOCAL / 02</small>
+          </div>
         </div>
 
-        <nav className="nav-list" aria-label="Primary navigation">
-          {navGroups.map(({ labelKey, items }) => (
-            <div className="nav-group" key={labelKey}>
-              <div className="nav-group-label mono">{t(labelKey)}</div>
-              {items.map(({ href, labelKey: itemKey, icon: Icon }) => (
+        <nav className="sidebar-nav" aria-label="Main Navigation">
+          {navGroups.map((group) => (
+            <div key={group.labelKey} className="nav-group">
+              <div className="nav-group-label">{t(group.labelKey)}</div>
+              {group.items.map(({ href, labelKey, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}
+                  className={`nav-item ${location === href ? 'nav-active' : ''}`}
                   onClick={() => setMobileNav(false)}
-                  className={`nav-item ${location === href || (href === '/overview' && location === '/') ? 'nav-active' : ''}`}
-                  data-testid={`link-nav-${href.slice(1)}`}
+                  data-testid={`link-nav-${href.replace('/', '')}`}
                 >
-                  <Icon size={17} strokeWidth={1.8} /><span>{t(itemKey)}</span>
-                  {href === '/deadlines' && <span className="nav-count">4</span>}
+                  <Icon size={17} />
+                  <span>{t(labelKey)}</span>
                 </Link>
               ))}
             </div>
@@ -70,8 +80,11 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
         <div className="sidebar-spacer" />
 
         <div className="account-card">
-          <div className="account-avatar">A<span className="account-online" /></div>
-          <div className="account-copy"><b>{t('account.name')}</b><small>{t('account.role')}</small></div>
+          <div className="account-avatar">{avatarChar}<span className="account-online" /></div>
+          <div className="account-copy" title={email}>
+            <b>{displayName}</b>
+            <small className="mono truncate max-w-[130px] block">{email}</small>
+          </div>
           <button
             className="btn btn-ghost account-signout"
             onClick={handleSignOut}
@@ -89,11 +102,6 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
         >
           <Settings2 size={17} /><span>{t('nav.settings')}</span>
         </Link>
-
-        <div className="sidebar-version-badge mono" data-testid="badge-sidebar-version">
-          <span className="version-dot" />
-          <span>{locale === 'ar' ? 'اصدار تجريبي 0.2.10' : 'Beta 0.2.10'}</span>
-        </div>
       </aside>
 
       {mobileNav && <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMobileNav(false)} />}
@@ -120,10 +128,9 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
         <div className="page-wrap page-in" key={location}>{children}</div>
       </main>
 
-      {/* Version badge in bottom corner */}
-      <div className="bottom-corner-badge mono" data-testid="badge-corner-version">
-        <span className="version-dot" />
-        <span>{locale === 'ar' ? 'اصدار تجريبي 0.2.10' : 'Beta 0.2.10'}</span>
+      {/* Simple, tiny version label in bottom right corner: no box, no light */}
+      <div className="bottom-corner-version mono" data-testid="text-corner-version">
+        {locale === 'ar' ? 'اصدار تجريبي 0.2.10' : 'Beta 0.2.10'}
       </div>
 
       {searchOpen && (

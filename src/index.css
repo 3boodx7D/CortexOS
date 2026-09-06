@@ -154,11 +154,6 @@
 [data-theme="light"] .account-online {
   border-color: #ffffff !important;
 }
-[data-theme="light"] .sidebar-version-badge {
-  background: hsl(220 14% 92%) !important;
-  border: 1px solid hsl(220 14% 85%) !important;
-  color: hsl(220 14% 32%) !important;
-}
 
 [data-theme="light"] .topbar {
   background: hsl(0 0% 100% / 0.88) !important;
@@ -385,11 +380,8 @@
   border-color: hsl(220 14% 88%) !important;
   box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04) !important;
 }
-[data-theme="light"] .bottom-corner-badge {
-  background: hsl(0 0% 100% / 0.95) !important;
-  border-color: hsl(220 14% 85%) !important;
-  color: hsl(220 14% 30%) !important;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08) !important;
+[data-theme="light"] .bottom-corner-version {
+  color: hsl(220 14% 42% / 0.7) !important;
 }
 [data-theme="light"] .btn-outline {
   background: #ffffff !important;
@@ -953,43 +945,18 @@
   padding-top: 6px; border-top: 1px solid hsl(var(--border) / .6);
 }
 
-/* ── Sidebar & Corner Version Badges ── */
-.sidebar-version-badge {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 12px; margin-top: 12px;
-  border-radius: 8px;
-  background: hsl(var(--secondary) / .4);
-  border: 1px solid hsl(var(--border) / .6);
-  font-size: 11px; font-weight: 600;
-  color: hsl(var(--muted-foreground));
-  letter-spacing: 0.5px;
-}
-.sidebar-version-badge .version-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 8px #10b981;
-}
-
-.bottom-corner-badge {
-  position: fixed; bottom: 16px; right: 20px; z-index: 40;
-  display: flex; align-items: center; gap: 7px;
-  padding: 6px 12px; border-radius: 20px;
-  background: hsl(var(--card) / .88);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid hsl(var(--primary) / .3);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 0 12px hsl(var(--primary) / .15);
-  font-size: 11px; font-weight: 600;
-  color: hsl(var(--foreground));
+/* ── Subtle Bottom Right Corner Version (Plain Text Only - No Boxes or Lights) ── */
+.bottom-corner-version {
+  position: fixed;
+  bottom: 12px;
+  right: 20px;
+  z-index: 30;
+  font-size: 11px;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground) / 0.55);
   pointer-events: none;
-}
-[dir="rtl"] .bottom-corner-badge {
-  right: auto; left: 20px;
-}
-.bottom-corner-badge .version-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: hsl(var(--primary));
-  box-shadow: 0 0 10px hsl(var(--primary));
+  user-select: none;
+  letter-spacing: 0.5px;
 }
 
 /* ── Import Dropzone ── */
@@ -1031,60 +998,55 @@
 .pulse-dot { animation: pulse-dot 1.8s ease-in-out infinite; }
 .pulse-dot-green { width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981; display: inline-block; }
 
-/* ── Mode 1: Minimal / Fast (خفيف وسريع) ── */
-[data-motion="minimal"] .page-in {
-  animation: cortex-fade-fast 80ms ease-out both;
+/* ── Mode 1: Light & Snappy (خفيف وسريع - فوري وبدون أي قفزات) ── */
+[data-motion="minimal"] .page-in,
+[data-motion="minimal"] .page-in * {
+  animation: none !important;
 }
 [data-motion="minimal"] * {
-  transition-duration: 80ms !important;
-}
-@keyframes cortex-fade-fast {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  transition-duration: 60ms !important;
+  animation-duration: 0ms !important;
 }
 
-/* ── Mode 2: Fluid / Cinematic (سينمائي فاخر مع حركة دخول الصفحة وتدرج البطاقات) ── */
-:root, [data-motion="cinematic"] .page-in {
-  animation: cortex-page-cinematic 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+/* ── Mode 2: Fluid & Cinematic (سينمائي سلس ومدروس بدون تعويق) ── */
+[data-motion="cinematic"] .page-in {
+  animation: cortex-page-cinematic 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-[data-motion="cinematic"] .page-in .panel,
 [data-motion="cinematic"] .page-in .module-card,
-[data-motion="cinematic"] .page-in .hero-panel,
-[data-motion="cinematic"] .page-in .telemetry,
 [data-motion="cinematic"] .page-in .project-card {
-  animation: cortex-card-cascade 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: cortex-card-cascade 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-[data-motion="cinematic"] .page-in .module-card:nth-child(1) { animation-delay: 35ms; }
-[data-motion="cinematic"] .page-in .module-card:nth-child(2) { animation-delay: 70ms; }
-[data-motion="cinematic"] .page-in .module-card:nth-child(3) { animation-delay: 105ms; }
-[data-motion="cinematic"] .page-in .module-card:nth-child(4) { animation-delay: 140ms; }
-[data-motion="cinematic"] .page-in .module-card:nth-child(5) { animation-delay: 175ms; }
-[data-motion="cinematic"] .page-in .module-card:nth-child(6) { animation-delay: 210ms; }
+[data-motion="cinematic"] .page-in .module-card:nth-child(1) { animation-delay: 20ms; }
+[data-motion="cinematic"] .page-in .module-card:nth-child(2) { animation-delay: 40ms; }
+[data-motion="cinematic"] .page-in .module-card:nth-child(3) { animation-delay: 60ms; }
+[data-motion="cinematic"] .page-in .module-card:nth-child(4) { animation-delay: 80ms; }
+[data-motion="cinematic"] .page-in .module-card:nth-child(5) { animation-delay: 100ms; }
+[data-motion="cinematic"] .page-in .module-card:nth-child(6) { animation-delay: 120ms; }
 
 [data-motion="cinematic"] .module-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.45), 0 0 20px hsl(var(--primary) / .22);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35), 0 0 16px hsl(var(--primary) / .2);
 }
 [data-motion="cinematic"] .btn-accent:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 20px hsl(var(--primary) / .4);
+  transform: translateY(-1px);
+  box-shadow: 0 0 16px hsl(var(--primary) / .35);
 }
 
 @keyframes cortex-page-cinematic {
   0% {
     opacity: 0;
-    transform: translateY(16px) scale(0.992);
+    transform: translateY(6px);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
 @keyframes cortex-card-cascade {
   0% {
     opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(5px);
   }
   100% {
     opacity: 1;

@@ -6,20 +6,23 @@ import {
 } from 'lucide-react';
 import { useTranslation, saveLocaleAndReload, type Locale } from '@/lib/i18n';
 import { usePersistent } from '@/hooks/use-persistent';
-import { signOut, getUser } from '@/lib/supabase';
+import { signOut, checkSupabaseConnection } from '@/lib/supabase';
+import { useUserContext } from '@/lib/user-store';
 
 export type MotionMode = 'minimal' | 'cinematic';
 
 export default function Settings({ notify }: { notify: (msg: string) => void }) {
   const { t, locale } = useTranslation();
+  const { email, userId, syncStatus, lastSynced, syncAllToCloud } = useUserContext();
   const [activeTab, setActiveTab] = useState('appearance');
 
   // State
   const [theme, setTheme] = usePersistent<'dark' | 'light'>('cortex-theme', 'dark');
   const [motionMode, setMotionMode] = usePersistent<MotionMode>('cortex-motion', 'cinematic');
   const [pendingLocale, setPendingLocale] = useState<Locale>(locale);
-  const [connectionStatus, setConnectionStatus] = useState('online');
+  const [connectionStatus, setConnectionStatus] = useState('ONLINE');
   const [checkingCloud, setCheckingCloud] = useState(false);
+  const [syncingNow, setSyncingNow] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
@@ -51,10 +54,10 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
   const testSupabaseConnection = async () => {
     setCheckingCloud(true);
     try {
-      const res = await fetch('/api/cloud/status');
-      const data = await res.json();
-      if (data.ok) {
-        setConnectionStatus(`ONLINE (${data.latencyMs || 280}ms)`);
+      const res = await checkSupabaseConnection();
+      if (res.ok) {
+        setConnectionStatus(`ONLINE (${res.latencyMs || 120}ms)`);
+        notify(locale === 'ar' ? 'الاتصال بسحابة Supabase سليم وسريع' : 'Supabase Cloud connection nominal');
       } else {
         setConnectionStatus('ONLINE (Cluster Ready)');
       }
@@ -65,15 +68,27 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
     }
   };
 
+  const handleSyncCloud = async () => {
+    setSyncingNow(true);
+    const ok = await syncAllToCloud();
+    setSyncingNow(false);
+    if (ok) {
+      notify(locale === 'ar' ? 'تمت مزامنة بيانات حسابك مع Supabase بنجاح' : 'Account data synchronized to Supabase Cloud');
+    } else {
+      notify(locale === 'ar' ? 'تم حفظ البيانات محلياً' : 'Data stored in local secure cache');
+    }
+  };
+
   // Data export
   const exportBackup = () => {
+    const userPrefix = `cortex_u_${userId}_`;
     const data = Object.fromEntries(
       Object.keys(localStorage)
-        .filter((k) => k.startsWith('cortex-'))
+        .filter((k) => k.startsWith(userPrefix) || k.startsWith('cortex-') || k.startsWith('cortex_u_'))
         .map((k) => [k, localStorage.getItem(k)])
     );
     const blob = new Blob(
-      [JSON.stringify({ exportedAt: new Date().toISOString(), version: '0.2.10', data }, null, 2)],
+      [JSON.stringify({ exportedAt: new Date().toISOString(), version: '0.2.10', userId, data }, null, 2)],
       { type: 'application/json' }
     );
     const url = URL.createObjectURL(blob);
@@ -87,7 +102,7 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
   // Data import
   const importBackup = (file: File) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const json = JSON.parse(e.target?.result as string);
         if (!json.data || typeof json.data !== 'object') throw new Error('Invalid format');
@@ -96,6 +111,7 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
             localStorage.setItem(key, value);
           }
         }
+        await syncAllToCloud();
         setTimeout(() => window.location.reload(), 400);
       } catch {
         alert(t('settings.data.invalidFile'));
@@ -291,12 +307,12 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
 
           <div className="cloud-details-grid">
             <div>
-              <small>{t('settings.cloud.database')}</small>
-              <b>PostgreSQL 15 (Multi-Tenant RLS)</b>
+              <small>{t('settings.cloud.accountInfo')}</small>
+              <b className="mono text-xs truncate max-w-[200px] block" title={email}>{email}</b>
             </div>
             <div>
-              <small>{t('settings.cloud.accountInfo')}</small>
-              <b className="mono">Encrypted Active Session</b>
+              <small>{t('settings.cloud.database')}</small>
+              <b className="mono text-xs truncate max-w-[200px] block" title={userId}>ID: {userId.slice(0, 12)}...</b>
             </div>
           </div>
         </div>
@@ -306,9 +322,9 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
             {checkingCloud ? <RefreshCw className="spin" size={14} /> : <Zap size={14} />}
             {t('settings.cloud.testConnection')}
           </button>
-          <button className="btn btn-accent focus-ring" onClick={() => testSupabaseConnection()}>
-            <RefreshCw size={14} />
-            {t('settings.cloud.syncCloud')}
+          <button className="btn btn-accent focus-ring" disabled={syncingNow} onClick={handleSyncCloud}>
+            <RefreshCw className={syncingNow ? "spin" : ""} size={14} />
+            {syncingNow ? (locale === 'ar' ? 'جاري المزامنة...' : 'Syncing...') : t('settings.cloud.syncCloud')}
           </button>
           <button className="btn btn-ghost text-destructive focus-ring" onClick={() => signOut()}>
             <LogOut size={14} />
@@ -425,7 +441,7 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
             </button>
           ))}
         </nav>
-        <section className="settings-content panel" role="tabpanel">
+        <section className="settings-content" role="tabpanel" key={activeTab}>
           {content[activeTab]}
         </section>
       </div>

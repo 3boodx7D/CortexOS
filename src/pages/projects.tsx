@@ -4,7 +4,7 @@ import {
   Search, Terminal, X,
 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
-import { usePersistent } from '@/hooks/use-persistent';
+import { useUserPersistent } from '@/lib/user-store';
 import { openExternal } from '@/lib/tauri';
 
 type Status = 'active' | 'paused' | 'archived';
@@ -34,7 +34,7 @@ function Modal({ title, children, onClose }: { title: string; children: ReactNod
 
 export default function Projects({ notify }: { notify: (msg: string) => void }) {
   const { t } = useTranslation();
-  const [projects, setProjects] = usePersistent<Project[]>('cortex-projects', seedProjects);
+  const [projects, setProjects] = useUserPersistent<Project[]>('projects', seedProjects);
   const [filter, setFilter] = useState<'all' | Status>('all');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Project | null>(projects[0]);

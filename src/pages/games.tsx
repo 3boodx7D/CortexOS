@@ -1,10 +1,10 @@
 import { Gamepad2, Gauge, Play, Power } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
-import { usePersistent } from '@/hooks/use-persistent';
+import { useUserPersistent } from '@/lib/user-store';
 
 export default function Games({ notify }: { notify: (msg: string) => void }) {
   const { t } = useTranslation();
-  const [turbo, setTurbo] = usePersistent('cortex-turbo', false);
+  const [turbo, setTurbo] = useUserPersistent('turbo', false);
   const games = [
     { title: 'Hades II', meta: 'Last played 2d ago', color: 'coral', icon: 'H2' },
     { title: 'The Finals', meta: 'Last played 5d ago', color: 'blue', icon: 'TF' },

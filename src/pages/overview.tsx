@@ -6,14 +6,14 @@ import {
   SunMedium, Trash2, Zap,
 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
-import { usePersistent } from '@/hooks/use-persistent';
+import { useUserPersistent } from '@/lib/user-store';
 
 export default function Overview({ notify }: { notify: (msg: string) => void }) {
   const { t } = useTranslation();
   const [now, setNow] = useState(new Date());
   useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 1000); return () => window.clearInterval(timer); }, []);
-  const [focus, setFocus] = usePersistent('cortex-focus', false);
-  const [turbo, setTurbo] = usePersistent('cortex-turbo', false);
+  const [focus, setFocus] = useUserPersistent('focus', false);
+  const [turbo, setTurbo] = useUserPersistent('turbo', false);
 
   const getGreeting = () => {
     const hour = now.getHours();

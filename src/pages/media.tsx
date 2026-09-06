@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChevronRight, Disc3, ListFilter, Music2, Pause, Play, Volume2 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
-import { usePersistent } from '@/hooks/use-persistent';
+import { useUserPersistent } from '@/lib/user-store';
 
 type Track = { id: string; title: string; artist: string; duration: string; mood: string };
 
@@ -14,9 +14,9 @@ const tracks: Track[] = [
 
 export default function Media({ notify }: { notify: (msg: string) => void }) {
   const { t } = useTranslation();
-  const [selected, setSelected] = usePersistent('cortex-track', tracks[0].id);
+  const [selected, setSelected] = useUserPersistent('track', tracks[0].id);
   const [playing, setPlaying] = useState(false);
-  const [volume, setVolume] = usePersistent('cortex-volume', 68);
+  const [volume, setVolume] = useUserPersistent('volume', 68);
   const track = tracks.find((item) => item.id === selected) || tracks[0];
 
   return (

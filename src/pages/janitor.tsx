@@ -2,12 +2,12 @@ import { useState } from 'react';
 import type * as React from 'react';
 import { Boxes, Check, CircleHelp, HardDrive, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
-import { usePersistent } from '@/hooks/use-persistent';
+import { useUserPersistent } from '@/lib/user-store';
 import { organizeWorkspace } from '@/lib/tauri';
 
 export default function Janitor({ notify }: { notify: (msg: string) => void }) {
   const { t } = useTranslation();
-  const [report, setReport] = usePersistent('cortex-janitor-report', { score: 84, lastRun: 'Today, 18:42', moved: 0, folders: 0 });
+  const [report, setReport] = useUserPersistent('janitor-report', { score: 84, lastRun: 'Today, 18:42', moved: 0, folders: 0 });
   const [running, setRunning] = useState(false);
 
   const run = async () => {

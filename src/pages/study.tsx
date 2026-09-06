@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { BrainCircuit, Check, RefreshCw, Sparkles } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
-import { usePersistent } from '@/hooks/use-persistent';
+import { useUserPersistent } from '@/lib/user-store';
 
 export default function Study({ notify }: { notify: (msg: string) => void }) {
   const { t } = useTranslation();
-  const [lecture, setLecture] = usePersistent('cortex-lecture', 'Distributed systems trade consistency for availability during network partitions. The CAP theorem describes this boundary. Replication strategies include leader-based replication, quorum reads, and eventual consistency. A practical system chooses a point in this design space based on user expectations and failure modes.');
+  const [lecture, setLecture] = useUserPersistent('lecture', 'Distributed systems trade consistency for availability during network partitions. The CAP theorem describes this boundary. Replication strategies include leader-based replication, quorum reads, and eventual consistency. A practical system chooses a point in this design space based on user expectations and failure modes.');
   const [summary, setSummary] = useState('');
   const [generating, setGenerating] = useState(false);
   const [aiModel, setAiModel] = useState('Google Gemini 3.6 Flash');
