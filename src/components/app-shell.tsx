@@ -25,7 +25,7 @@ const navGroups = [
 ];
 
 export function AppShell({ children, toast }: { children: ReactNode; toast: string }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [location] = useLocation();
   const [mobileNav, setMobileNav] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
