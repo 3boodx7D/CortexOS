@@ -227,7 +227,7 @@
     "about": {
       "title": "System & Version",
       "desc": "CortexOS executive neural cockpit for workspace and study orchestration.",
-      "version": "Beta 0.2.10 (إصدار تجريبي)",
+      "version": "Beta 0.2.10",
       "versionLabel": "Application Version",
       "channel": "Release Channel",
       "channelValue": "Public Preview / Beta 0.2",

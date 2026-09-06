@@ -29,6 +29,11 @@ function App() {
     document.documentElement.lang = locale;
     document.documentElement.setAttribute('data-theme', theme);
     document.documentElement.setAttribute('data-motion', motion);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }, [locale, theme, motion]);
 
   // Silent notification handler - no annoying bottom blue toasts

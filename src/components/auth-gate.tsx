@@ -1,7 +1,11 @@
 import { type FormEvent, useEffect, useState } from 'react';
-import { BrainCircuit, CheckCircle2, Loader2, Lock, ShieldCheck, Sparkles, UserCheck, Zap } from 'lucide-react';
+import {
+  BrainCircuit, CheckCircle2, Loader2, Lock, Moon,
+  ShieldCheck, Sparkles, Sun, Zap,
+} from 'lucide-react';
 import { signIn, signUp, onAuthStateChange, getSession } from '@/lib/supabase';
-import { useTranslation } from '@/lib/i18n';
+import { useTranslation, saveLocaleAndReload } from '@/lib/i18n';
+import { usePersistent } from '@/hooks/use-persistent';
 import type { Session } from '@supabase/supabase-js';
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
@@ -10,6 +14,16 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return localStorage.getItem('cortex-guest-mode') === 'true';
   });
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = usePersistent<'dark' | 'light'>('cortex-theme', 'dark');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
 
   useEffect(() => {
     getSession().then((s) => {
@@ -24,6 +38,17 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const handleToggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    document.documentElement.setAttribute('data-theme', next);
+    if (next === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
 
   if (loading) {
     return (
@@ -41,14 +66,28 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   if (!session && !isGuest) {
-    return <LoginScreen onGuestAccess={() => setIsGuest(true)} />;
+    return (
+      <LoginScreen
+        onGuestAccess={() => setIsGuest(true)}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
+      />
+    );
   }
 
   return <>{children}</>;
 }
 
-function LoginScreen({ onGuestAccess }: { onGuestAccess: () => void }) {
-  const { t } = useTranslation();
+function LoginScreen({
+  onGuestAccess,
+  theme,
+  onToggleTheme,
+}: {
+  onGuestAccess: () => void;
+  theme: 'dark' | 'light';
+  onToggleTheme: () => void;
+}) {
+  const { t, locale } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
@@ -88,6 +127,30 @@ function LoginScreen({ onGuestAccess }: { onGuestAccess: () => void }) {
 
   return (
     <div className="auth-gate">
+      {/* Corner Controls: Theme Switcher & Language Switcher */}
+      <div className="auth-corner-controls">
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          className="auth-control-btn"
+          title={theme === 'dark' ? 'Switch to Light theme' : 'التبديل إلى الوضع الداكن'}
+          aria-label="Toggle theme"
+          data-testid="button-auth-toggle-theme"
+        >
+          {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+        </button>
+        <button
+          type="button"
+          onClick={() => saveLocaleAndReload(locale === 'ar' ? 'en' : 'ar')}
+          className="auth-control-btn mono font-bold"
+          title="Switch Language / تغيير اللغة"
+          aria-label="Toggle language"
+          data-testid="button-auth-toggle-lang"
+        >
+          {locale === 'ar' ? 'EN' : 'عربي'}
+        </button>
+      </div>
+
       {/* Radiant atmospheric ambient glow — zero grid lines */}
       <div className="auth-glow-backdrop" aria-hidden="true">
         <div className="auth-glow-orb auth-glow-primary" />

@@ -27,6 +27,11 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
   const applyTheme = useCallback((newTheme: 'dark' | 'light') => {
     setTheme(newTheme);
     document.documentElement.setAttribute('data-theme', newTheme);
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }, [setTheme]);
 
   // Motion switching
