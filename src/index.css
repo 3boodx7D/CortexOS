@@ -313,6 +313,8 @@
 [data-theme="light"] .account-details-panel,
 [data-theme="light"] .desktop-toggle-row,
 [data-theme="light"] .privacy-card,
+[data-theme="light"] .security-sub-panel,
+[data-theme="light"] .language-card-item,
 [data-theme="light"] .cloud-status-panel {
   background: hsl(220 16% 97%) !important;
   border: 1px solid hsl(220 14% 88%) !important;
@@ -322,10 +324,15 @@
   border-color: hsl(220 14% 85%) !important;
   color: hsl(220 12% 40%) !important;
 }
-[data-theme="light"] .editable-input {
+[data-theme="light"] .editable-input,
+[data-theme="light"] .editable-textarea {
   background: #ffffff !important;
   border-color: hsl(220 14% 85%) !important;
   color: hsl(220 22% 12%) !important;
+}
+[data-theme="light"] .language-card-active {
+  background: hsl(var(--primary) / 0.08) !important;
+  border-color: hsl(var(--primary)) !important;
 }
 
 [data-theme="light"] .project-row {
@@ -985,8 +992,28 @@
   display: inline-flex; align-items: center; gap: 6px; font-size: 11px;
   color: #10b981; font-weight: 500;
 }
+.account-role-pill {
+  font-size: 11px; padding: 2px 8px; border-radius: 6px;
+  background: hsl(var(--primary) / 0.12); color: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary) / 0.25); font-weight: 600;
+}
 .account-edit-form {
   display: flex; flex-direction: column; gap: 16px;
+}
+.form-row-2 {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+@media (max-width: 640px) {
+  .form-row-2 { grid-template-columns: 1fr; }
+}
+.form-group {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.form-group label {
+  font-size: 13px; font-weight: 600; color: hsl(var(--foreground));
+}
+.form-actions-inline {
+  display: flex; justify-content: flex-end; margin-top: 4px;
 }
 .locked-input-wrapper {
   position: relative; display: flex; align-items: center;
@@ -1003,11 +1030,8 @@
   position: absolute; inset-inline-end: 12px;
   color: hsl(var(--muted-foreground) / 0.7); pointer-events: none;
 }
-.input-with-button {
-  display: flex; gap: 10px; align-items: center;
-}
 .editable-input {
-  flex: 1; height: 42px; padding: 0 14px;
+  width: 100%; height: 42px; padding: 0 14px;
   background: hsl(var(--card)); border: 1px solid hsl(var(--border));
   color: hsl(var(--foreground)); border-radius: 9px; font-size: 14px;
   transition: all var(--motion-duration) var(--motion-ease);
@@ -1016,6 +1040,91 @@
   border-color: hsl(var(--primary));
   box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
   outline: none;
+}
+.editable-textarea {
+  width: 100%; padding: 10px 14px;
+  background: hsl(var(--card)); border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground)); border-radius: 9px; font-size: 13px;
+  resize: vertical; min-height: 56px; font-family: inherit;
+  transition: all var(--motion-duration) var(--motion-ease);
+}
+.editable-textarea:focus {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
+  outline: none;
+}
+
+/* ── Security & Password Sub Panel ── */
+.security-sub-panel {
+  padding: 16px 20px; border-radius: 12px;
+  display: flex; flex-direction: column; gap: 14px;
+  margin-top: 4px; border: 1px solid hsl(var(--border));
+}
+.sub-panel-head {
+  display: flex; align-items: center; gap: 8px; font-size: 13px;
+  color: hsl(var(--foreground));
+}
+.password-change-form {
+  display: flex; flex-direction: column; gap: 12px;
+}
+.password-change-form button {
+  align-self: flex-start;
+}
+
+/* ── Desktop Settings Groups (PC App Tab) ── */
+.desktop-settings-group {
+  display: flex; flex-direction: column; gap: 14px; margin-bottom: 26px;
+  padding-bottom: 22px; border-bottom: 1px solid hsl(var(--border) / 0.6);
+}
+.desktop-settings-group:last-child {
+  margin-bottom: 0; padding-bottom: 0; border-bottom: none;
+}
+.group-header {
+  display: flex; align-items: flex-start; gap: 12px;
+}
+.group-header b {
+  font-size: 15px; color: hsl(var(--foreground));
+}
+.group-header small {
+  font-size: 12px; margin-top: 2px;
+}
+
+/* ── Language Cards Grid (Proper Premium Cards) ── */
+.language-cards-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+.language-card-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 18px; border-radius: 12px;
+  border: 2px solid hsl(var(--border)); background: hsl(var(--card));
+  cursor: pointer; text-align: start; position: relative;
+  transition: all var(--motion-duration) var(--motion-ease);
+}
+.language-card-item:hover {
+  border-color: hsl(var(--primary) / 0.4);
+  transform: translateY(-1px);
+}
+.language-card-active {
+  border-color: hsl(var(--primary)) !important;
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15), 0 4px 16px -4px hsl(var(--primary) / 0.2) !important;
+}
+.lang-flag-circle {
+  font-size: 26px; line-height: 1;
+}
+.lang-info {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.lang-info b {
+  font-size: 14px; color: hsl(var(--foreground));
+}
+.lang-info small {
+  font-size: 11px; color: hsl(var(--muted-foreground));
+}
+.lang-check-badge {
+  position: absolute; top: 12px; inset-inline-end: 12px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: hsl(var(--primary)); color: hsl(var(--primary-foreground));
+  display: grid; place-items: center;
 }
 
 /* ── Desktop Toggle List (PC Settings) ── */

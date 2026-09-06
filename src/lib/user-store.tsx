@@ -8,12 +8,15 @@ interface UserStoreContextType {
   userId: string;
   email: string;
   displayName: string;
+  role: string;
+  bio: string;
   avatarChar: string;
   syncStatus: 'synced' | 'syncing' | 'offline' | 'saved_locally';
   lastSynced: string | null;
   syncAllToCloud: () => Promise<boolean>;
   getScopedKey: (key: string) => string;
   updateDisplayName: (name: string) => Promise<boolean>;
+  updateProfile: (updates: { displayName?: string; role?: string; bio?: string }) => Promise<boolean>;
 }
 
 const UserStoreContext = createContext<UserStoreContextType | null>(null);
@@ -48,38 +51,79 @@ export function UserStoreProvider({
     if (typeof window === 'undefined') return '';
     return localStorage.getItem(`cortex_custom_name_${userId}`) || '';
   });
+  const [customRole, setCustomRole] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    return localStorage.getItem(`cortex_custom_role_${userId}`) || '';
+  });
+  const [customBio, setCustomBio] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    return localStorage.getItem(`cortex_custom_bio_${userId}`) || '';
+  });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(`cortex_custom_name_${userId}`);
-      if (stored) {
-        setCustomName(stored);
-      } else if (user?.user_metadata?.name) {
-        setCustomName(user.user_metadata.name);
-      }
+      const storedName = localStorage.getItem(`cortex_custom_name_${userId}`);
+      if (storedName) setCustomName(storedName);
+      else if (user?.user_metadata?.name) setCustomName(user.user_metadata.name);
+
+      const storedRole = localStorage.getItem(`cortex_custom_role_${userId}`);
+      if (storedRole) setCustomRole(storedRole);
+      else if (user?.user_metadata?.role) setCustomRole(user.user_metadata.role);
+
+      const storedBio = localStorage.getItem(`cortex_custom_bio_${userId}`);
+      if (storedBio) setCustomBio(storedBio);
+      else if (user?.user_metadata?.bio) setCustomBio(user.user_metadata.bio);
     }
   }, [userId, user]);
 
   const displayName = customName || (user?.user_metadata?.name as string) || email.split('@')[0] || 'Operator';
+  const role = customRole || (user?.user_metadata?.role as string) || 'Lead Engineer';
+  const bio = customBio || (user?.user_metadata?.bio as string) || 'Local workspace & neural executive';
   const avatarChar = displayName.charAt(0).toUpperCase() || 'U';
 
-  const updateDisplayName = useCallback(async (name: string): Promise<boolean> => {
-    setCustomName(name);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(`cortex_custom_name_${userId}`, name);
+  const updateProfile = useCallback(async (updates: { displayName?: string; role?: string; bio?: string }): Promise<boolean> => {
+    const nextMeta: Record<string, any> = {};
+
+    if (updates.displayName !== undefined) {
+      setCustomName(updates.displayName);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`cortex_custom_name_${userId}`, updates.displayName);
+      }
+      nextMeta.name = updates.displayName;
     }
+
+    if (updates.role !== undefined) {
+      setCustomRole(updates.role);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`cortex_custom_role_${userId}`, updates.role);
+      }
+      nextMeta.role = updates.role;
+    }
+
+    if (updates.bio !== undefined) {
+      setCustomBio(updates.bio);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`cortex_custom_bio_${userId}`, updates.bio);
+      }
+      nextMeta.bio = updates.bio;
+    }
+
     try {
       if (user && userId !== 'guest') {
         await supabase.auth.updateUser({
-          data: { name },
+          data: nextMeta,
         });
       }
       return true;
     } catch (e) {
-      console.warn('Could not update remote user name:', e);
+      console.warn('Could not update remote user profile:', e);
       return false;
     }
   }, [user, userId]);
+
+  const updateDisplayName = useCallback(async (name: string): Promise<boolean> => {
+    return updateProfile({ displayName: name });
+  }, [updateProfile]);
 
   const getScopedKey = useCallback((key: string) => {
     return `cortex_u_${userId}_${key}`;
@@ -196,12 +240,15 @@ export function UserStoreProvider({
         userId,
         email,
         displayName,
+        role,
+        bio,
         avatarChar,
         syncStatus,
         lastSynced,
         syncAllToCloud,
         getScopedKey,
         updateDisplayName,
+        updateProfile,
       }}
     >
       {children}

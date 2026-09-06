@@ -22,6 +22,12 @@ export async function signUp(email: string, password: string) {
   return data;
 }
 
+export async function updatePassword(newPassword: string) {
+  const { data, error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+  return data;
+}
+
 export async function signOut() {
   localStorage.removeItem('cortex-guest-mode');
   try {

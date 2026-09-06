@@ -1,46 +1,65 @@
 import { type ChangeEvent, useCallback, useRef, useState, useEffect } from 'react';
 import {
   Check, ChevronRight, Cpu, Eye,
-  Globe, HardDrive, Info, Lock, LogOut, Monitor, Moon, Palette, RefreshCw, Save, Shield, ShieldCheck, Sun,
-  Upload, User as UserIcon, Zap,
+  HardDrive, Info, KeyRound, Lock, LogOut, Monitor, Moon, Palette, RefreshCw, Save, Shield, ShieldCheck, Sun,
+  Upload, User as UserIcon, Zap, Globe
 } from 'lucide-react';
 import { useTranslation, saveLocaleAndReload, type Locale } from '@/lib/i18n';
 import { usePersistent } from '@/hooks/use-persistent';
-import { signOut } from '@/lib/supabase';
+import { signOut, updatePassword } from '@/lib/supabase';
 import { useUserContext } from '@/lib/user-store';
 
 export type MotionMode = 'minimal' | 'cinematic';
 
 export default function Settings({ notify }: { notify: (msg: string) => void }) {
   const { t, locale } = useTranslation();
-  const { email, userId, displayName, avatarChar, syncStatus, lastSynced, syncAllToCloud, updateDisplayName } = useUserContext();
-  const [activeTab, setActiveTab] = useState('account');
+  const {
+    email,
+    userId,
+    displayName,
+    role,
+    bio,
+    avatarChar,
+    lastSynced,
+    syncAllToCloud,
+    updateProfile,
+  } = useUserContext();
 
-  // State
+  const [activeTab, setActiveTab] = useState<'account' | 'desktop' | 'data' | 'privacy' | 'about'>('account');
+
+  // Desktop App (PC) Local-Only settings (stored in localStorage per machine)
   const [theme, setTheme] = usePersistent<'dark' | 'light'>('cortex-theme', 'dark');
   const [motionMode, setMotionMode] = usePersistent<MotionMode>('cortex-motion', 'cinematic');
-  const [pendingLocale, setPendingLocale] = useState<Locale>(locale);
-
-  // Desktop App (PC) simulated settings
   const [autoStart, setAutoStart] = usePersistent<boolean>('cortex-pc-autostart', true);
   const [runInBackground, setRunInBackground] = usePersistent<boolean>('cortex-pc-background', true);
   const [gpuAcceleration, setGpuAcceleration] = usePersistent<boolean>('cortex-pc-gpu', true);
   const [globalHotkeys, setGlobalHotkeys] = usePersistent<boolean>('cortex-pc-hotkeys', true);
 
-  // Account editing
+  // Account Form State
   const [inputName, setInputName] = useState(displayName);
-  const [savingName, setSavingName] = useState(false);
+  const [inputRole, setInputRole] = useState(role);
+  const [inputBio, setInputBio] = useState(bio);
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Security Form State
+  const [newPass, setNewPass] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
+  const [updatingPass, setUpdatingPass] = useState(false);
+
+  // Sync state
   const [syncingNow, setSyncingNow] = useState(false);
 
-  // File import/export
+  // Backup files
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
   useEffect(() => {
     setInputName(displayName);
-  }, [displayName]);
+    setInputRole(role);
+    setInputBio(bio);
+  }, [displayName, role, bio]);
 
-  // Theme switching
+  // Theme switching (Local to this PC)
   const applyTheme = useCallback((newTheme: 'dark' | 'light') => {
     setTheme(newTheme);
     document.documentElement.setAttribute('data-theme', newTheme);
@@ -51,28 +70,57 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
     }
   }, [setTheme]);
 
-  // Motion switching
+  // Motion switching (Local to this PC)
   const applyMotion = useCallback((mode: MotionMode) => {
     setMotionMode(mode);
     document.documentElement.setAttribute('data-motion', mode);
   }, [setMotionMode]);
 
-  // Language save
-  const handleSaveLocale = () => {
-    if (pendingLocale !== locale) {
-      saveLocaleAndReload(pendingLocale);
+  // Language switching (Local to this PC)
+  const handleSelectLanguage = (newLang: Locale) => {
+    if (newLang !== locale) {
+      saveLocaleAndReload(newLang);
     }
   };
 
-  // Name save
-  const handleSaveName = async (e: React.FormEvent) => {
+  // Profile Save (Persisted to Database & Cloud)
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputName.trim()) return;
-    setSavingName(true);
-    const ok = await updateDisplayName(inputName.trim());
-    setSavingName(false);
+    setSavingProfile(true);
+    const ok = await updateProfile({
+      displayName: inputName.trim(),
+      role: inputRole.trim(),
+      bio: inputBio.trim(),
+    });
+    setSavingProfile(false);
     if (ok) {
-      notify(t('settings.account.nameUpdated'));
+      notify(t('settings.account.profileUpdated'));
+    }
+  };
+
+  // Password Change
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPass) return;
+    if (newPass.length < 6) {
+      alert(t('settings.account.passwordMinLength'));
+      return;
+    }
+    if (newPass !== confirmPass) {
+      alert(t('settings.account.passwordMismatch'));
+      return;
+    }
+    setUpdatingPass(true);
+    try {
+      await updatePassword(newPass);
+      setNewPass('');
+      setConfirmPass('');
+      notify(t('settings.account.passwordChanged'));
+    } catch (err: any) {
+      alert(err?.message || 'Failed to update password');
+    } finally {
+      setUpdatingPass(false);
     }
   };
 
@@ -151,18 +199,16 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
     setTimeout(() => window.location.reload(), 300);
   };
 
+  // Curated 5 logical tabs
   const tabs = [
     { id: 'account', labelKey: 'settings.tabs.account', icon: UserIcon },
-    { id: 'appearance', labelKey: 'settings.tabs.appearance', icon: Palette },
     { id: 'desktop', labelKey: 'settings.tabs.desktop', icon: Monitor },
-    { id: 'motion', labelKey: 'settings.tabs.motion', icon: Zap },
     { id: 'data', labelKey: 'settings.tabs.data', icon: HardDrive },
     { id: 'privacy', labelKey: 'settings.tabs.privacy', icon: Shield },
-    { id: 'language', labelKey: 'settings.tabs.language', icon: Globe },
     { id: 'about', labelKey: 'settings.tabs.about', icon: Info },
-  ];
+  ] as const;
 
-  const content: Record<string, React.ReactNode> = {
+  const content: Record<typeof tabs[number]['id'], React.ReactNode> = {
     account: (
       <div className="settings-form">
         <div className="settings-section-heading">
@@ -173,7 +219,7 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
           </div>
         </div>
 
-        {/* User Card */}
+        {/* Profile Card & Details */}
         <div className="account-details-panel panel-subtle">
           <div className="account-profile-header">
             <div className="account-big-avatar">
@@ -181,7 +227,10 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
               <span className="account-online" />
             </div>
             <div className="account-profile-text">
-              <span className="account-profile-name">{displayName}</span>
+              <div className="flex items-center gap-2">
+                <span className="account-profile-name">{displayName}</span>
+                <span className="account-role-pill mono">{role}</span>
+              </div>
               <span className="account-profile-badge mono">
                 <ShieldCheck size={13} className="text-emerald-400" />
                 {t('settings.account.connected')}
@@ -189,7 +238,8 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
             </div>
           </div>
 
-          <form className="account-edit-form" onSubmit={handleSaveName}>
+          <form className="account-edit-form" onSubmit={handleSaveProfile}>
+            {/* Locked Email */}
             <div className="form-group">
               <label htmlFor="settings-email-locked">
                 <span>{t('settings.account.emailLabel')}</span>
@@ -208,11 +258,12 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
               <small className="field-hint text-muted-foreground">{t('settings.account.emailHint')}</small>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="settings-display-name">
-                <span>{t('settings.account.displayName')}</span>
-              </label>
-              <div className="input-with-button">
+            {/* Editable Display Name & Role in a 2-column grid */}
+            <div className="form-row-2">
+              <div className="form-group">
+                <label htmlFor="settings-display-name">
+                  <span>{t('settings.account.displayName')}</span>
+                </label>
                 <input
                   id="settings-display-name"
                   type="text"
@@ -222,23 +273,92 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
                   maxLength={40}
                   className="editable-input"
                 />
-                <button
-                  type="submit"
-                  className="btn btn-primary btn-sm focus-ring"
-                  disabled={savingName || inputName.trim() === displayName || !inputName.trim()}
-                >
-                  <Save size={13} />
-                  {savingName ? (locale === 'ar' ? 'جارٍ الحفظ...' : 'Saving...') : t('settings.account.saveName')}
-                </button>
+              </div>
+              <div className="form-group">
+                <label htmlFor="settings-role">
+                  <span>{t('settings.account.role')}</span>
+                </label>
+                <input
+                  id="settings-role"
+                  type="text"
+                  value={inputRole}
+                  onChange={(e) => setInputRole(e.target.value)}
+                  placeholder="e.g. Lead Engineer, Student"
+                  maxLength={50}
+                  className="editable-input"
+                />
               </div>
             </div>
+
+            {/* Editable Bio */}
+            <div className="form-group">
+              <label htmlFor="settings-bio">
+                <span>{t('settings.account.bio')}</span>
+              </label>
+              <textarea
+                id="settings-bio"
+                rows={2}
+                value={inputBio}
+                onChange={(e) => setInputBio(e.target.value)}
+                placeholder="A brief bio..."
+                maxLength={200}
+                className="editable-textarea"
+              />
+            </div>
+
+            <div className="form-actions-inline">
+              <button
+                type="submit"
+                className="btn btn-primary focus-ring"
+                disabled={savingProfile || !inputName.trim()}
+              >
+                <Save size={14} />
+                {savingProfile ? (locale === 'ar' ? 'جارٍ الحفظ في الداتا بيس...' : 'Saving to Database...') : t('settings.account.saveProfile')}
+              </button>
+            </div>
           </form>
+
+          {/* Security & Password Section */}
+          <div className="security-sub-panel panel-subtle">
+            <div className="sub-panel-head">
+              <KeyRound size={15} className="text-cyan" />
+              <b>{t('settings.account.securitySection')}</b>
+            </div>
+            <form className="password-change-form" onSubmit={handleUpdatePassword}>
+              <div className="form-row-2">
+                <input
+                  type="password"
+                  placeholder={t('settings.account.newPassword')}
+                  value={newPass}
+                  onChange={(e) => setNewPass(e.target.value)}
+                  minLength={6}
+                  className="editable-input"
+                />
+                <input
+                  type="password"
+                  placeholder={t('settings.account.confirmPassword')}
+                  value={confirmPass}
+                  onChange={(e) => setConfirmPass(e.target.value)}
+                  minLength={6}
+                  className="editable-input"
+                />
+              </div>
+              <button
+                type="submit"
+                className="btn btn-outline focus-ring"
+                disabled={updatingPass || !newPass || !confirmPass}
+              >
+                <Lock size={13} />
+                {updatingPass ? (locale === 'ar' ? 'جارٍ التحديث...' : 'Updating...') : t('settings.account.updatePassword')}
+              </button>
+            </form>
+          </div>
 
           <div className="cloud-details-grid">
             <div>
               <small>{t('settings.account.accountInfo')}</small>
               <b className="mono text-xs truncate max-w-[200px] block" title={userId}>
-                UUID: {userId.slice(0, 16)}...
+                {userId}
               </b>
             </div>
             <div>
@@ -263,48 +383,6 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
       </div>
     ),
 
-    appearance: (
-      <div className="settings-form">
-        <div className="settings-section-heading">
-          <span className="settings-icon"><Palette size={16} /></span>
-          <div>
-            <h2>{t('settings.appearance.title')}</h2>
-            <p>{t('settings.appearance.desc')}</p>
-          </div>
-        </div>
-        <div className="theme-cards">
-          <button
-            className={`theme-card theme-dark-card ${theme === 'dark' ? 'theme-active' : ''}`}
-            onClick={() => applyTheme('dark')}
-          >
-            <div className="theme-preview theme-preview-dark">
-              <Moon size={24} />
-              <div className="theme-preview-lines"><span /><span /><span /></div>
-            </div>
-            <div className="theme-card-info">
-              <b>{t('settings.appearance.obsidian')}</b>
-              <small>{t('settings.appearance.obsidianDesc')}</small>
-            </div>
-            {theme === 'dark' && <span className="theme-check"><Check size={14} /></span>}
-          </button>
-          <button
-            className={`theme-card theme-light-card ${theme === 'light' ? 'theme-active' : ''}`}
-            onClick={() => applyTheme('light')}
-          >
-            <div className="theme-preview theme-preview-light">
-              <Sun size={24} />
-              <div className="theme-preview-lines"><span /><span /><span /></div>
-            </div>
-            <div className="theme-card-info">
-              <b>{t('settings.appearance.titanium')}</b>
-              <small>{t('settings.appearance.titaniumDesc')}</small>
-            </div>
-            {theme === 'light' && <span className="theme-check"><Check size={14} /></span>}
-          </button>
-        </div>
-      </div>
-    ),
-
     desktop: (
       <div className="settings-form">
         <div className="settings-section-heading">
@@ -315,156 +393,240 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
           </div>
         </div>
 
-        <div className="desktop-toggle-list">
-          {/* 1. Auto Start */}
-          <div className="desktop-toggle-row panel-subtle">
-            <div className="desktop-toggle-info">
-              <div className="desktop-toggle-title">
-                <Monitor size={16} className="text-cyan" />
-                <b>{t('settings.desktop.autoLaunchTitle')}</b>
-              </div>
-              <p>{t('settings.desktop.autoLaunchDesc')}</p>
+        {/* 1. Theme Selection Cards (Local to PC) */}
+        <div className="desktop-settings-group">
+          <div className="group-header">
+            <Palette size={16} className="text-cyan" />
+            <div>
+              <b>{t('settings.desktop.themeSection')}</b>
+              <small className="block text-muted-foreground">{t('settings.desktop.themeDesc')}</small>
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={autoStart}
-              className={`toggle ${autoStart ? 'toggle-on' : ''}`}
-              onClick={() => {
-                const next = !autoStart;
-                setAutoStart(next);
-                notify(next ? (locale === 'ar' ? 'تم تفعيل التشغيل التلقائي مع الويندوز' : 'Auto-launch enabled') : (locale === 'ar' ? 'تم تعطيل التشغيل التلقائي' : 'Auto-launch disabled'));
-              }}
-              data-testid="toggle-pc-autostart"
-            >
-              <span />
-            </button>
           </div>
-
-          {/* 2. Run in Background */}
-          <div className="desktop-toggle-row panel-subtle">
-            <div className="desktop-toggle-info">
-              <div className="desktop-toggle-title">
-                <Cpu size={16} className="text-emerald-400" />
-                <b>{t('settings.desktop.backgroundTitle')}</b>
-              </div>
-              <p>{t('settings.desktop.backgroundDesc')}</p>
-            </div>
+          <div className="theme-cards">
             <button
-              type="button"
-              role="switch"
-              aria-checked={runInBackground}
-              className={`toggle ${runInBackground ? 'toggle-on' : ''}`}
-              onClick={() => {
-                const next = !runInBackground;
-                setRunInBackground(next);
-                notify(next ? (locale === 'ar' ? 'البرنامج سيبقى نشطاً في الخلفية (Tray)' : 'Background tray mode enabled') : (locale === 'ar' ? 'البرنامج سيغلق بالكامل عند الخروج' : 'Background tray mode disabled'));
-              }}
-              data-testid="toggle-pc-background"
+              className={`theme-card theme-dark-card ${theme === 'dark' ? 'theme-active' : ''}`}
+              onClick={() => applyTheme('dark')}
             >
-              <span />
+              <div className="theme-preview theme-preview-dark">
+                <Moon size={24} />
+                <div className="theme-preview-lines"><span /><span /><span /></div>
+              </div>
+              <div className="theme-card-info">
+                <b>{t('settings.desktop.obsidian')}</b>
+                <small>{t('settings.desktop.obsidianDesc')}</small>
+              </div>
+              {theme === 'dark' && <span className="theme-check"><Check size={14} /></span>}
             </button>
-          </div>
-
-          {/* 3. GPU Hardware Acceleration */}
-          <div className="desktop-toggle-row panel-subtle">
-            <div className="desktop-toggle-info">
-              <div className="desktop-toggle-title">
-                <Zap size={16} className="text-amber-400" />
-                <b>{t('settings.desktop.hardwareTitle')}</b>
-              </div>
-              <p>{t('settings.desktop.hardwareDesc')}</p>
-            </div>
             <button
-              type="button"
-              role="switch"
-              aria-checked={gpuAcceleration}
-              className={`toggle ${gpuAcceleration ? 'toggle-on' : ''}`}
-              onClick={() => {
-                const next = !gpuAcceleration;
-                setGpuAcceleration(next);
-                notify(next ? (locale === 'ar' ? 'تم تفعيل تسريع كرت الشاشة GPU' : 'GPU acceleration enabled') : (locale === 'ar' ? 'تم إيقاف تسريع العتاد' : 'GPU acceleration disabled'));
-              }}
-              data-testid="toggle-pc-gpu"
+              className={`theme-card theme-light-card ${theme === 'light' ? 'theme-active' : ''}`}
+              onClick={() => applyTheme('light')}
             >
-              <span />
-            </button>
-          </div>
-
-          {/* 4. Global Hotkeys */}
-          <div className="desktop-toggle-row panel-subtle">
-            <div className="desktop-toggle-info">
-              <div className="desktop-toggle-title">
-                <HardDrive size={16} className="text-purple-400" />
-                <b>{t('settings.desktop.globalHotkeysTitle')}</b>
+              <div className="theme-preview theme-preview-light">
+                <Sun size={24} />
+                <div className="theme-preview-lines"><span /><span /><span /></div>
               </div>
-              <p>{t('settings.desktop.globalHotkeysDesc')}</p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={globalHotkeys}
-              className={`toggle ${globalHotkeys ? 'toggle-on' : ''}`}
-              onClick={() => {
-                const next = !globalHotkeys;
-                setGlobalHotkeys(next);
-                notify(next ? (locale === 'ar' ? 'تم تفعيل اختصارات النظام العامة' : 'Global system hotkeys active') : (locale === 'ar' ? 'تم تعطيل الاختصارات العامة' : 'Global hotkeys disabled'));
-              }}
-              data-testid="toggle-pc-hotkeys"
-            >
-              <span />
+              <div className="theme-card-info">
+                <b>{t('settings.desktop.titanium')}</b>
+                <small>{t('settings.desktop.titaniumDesc')}</small>
+              </div>
+              {theme === 'light' && <span className="theme-check"><Check size={14} /></span>}
             </button>
           </div>
         </div>
-      </div>
-    ),
 
-    motion: (
-      <div className="settings-form">
-        <div className="settings-section-heading">
-          <span className="settings-icon"><Zap size={16} /></span>
-          <div>
-            <h2>{t('settings.motion.title')}</h2>
-            <p>{t('settings.motion.desc')}</p>
+        {/* 2. Language Selection Cards (Proper clean cards, NO ugly broken dropdown) */}
+        <div className="desktop-settings-group">
+          <div className="group-header">
+            <Globe size={16} className="text-emerald-400" />
+            <div>
+              <b>{t('settings.desktop.languageSection')}</b>
+              <small className="block text-muted-foreground">{t('settings.desktop.languageDesc')}</small>
+            </div>
+          </div>
+          <div className="language-cards-grid">
+            <button
+              type="button"
+              className={`language-card-item panel-subtle ${locale === 'ar' ? 'language-card-active' : ''}`}
+              onClick={() => handleSelectLanguage('ar')}
+            >
+              <div className="lang-flag-circle">🇸🇦</div>
+              <div className="lang-info">
+                <b>العربية</b>
+                <small className="mono">Arabic (RTL)</small>
+              </div>
+              {locale === 'ar' && <span className="lang-check-badge"><Check size={13} /></span>}
+            </button>
+            <button
+              type="button"
+              className={`language-card-item panel-subtle ${locale === 'en' ? 'language-card-active' : ''}`}
+              onClick={() => handleSelectLanguage('en')}
+            >
+              <div className="lang-flag-circle">🇺🇸</div>
+              <div className="lang-info">
+                <b>English</b>
+                <small className="mono">English (LTR)</small>
+              </div>
+              {locale === 'en' && <span className="lang-check-badge"><Check size={13} /></span>}
+            </button>
           </div>
         </div>
-        <div className="theme-cards">
-          {/* Mode 1: Minimal */}
-          <button
-            className={`theme-card ${motionMode === 'minimal' ? 'theme-active' : ''}`}
-            onClick={() => applyMotion('minimal')}
-            data-testid="button-motion-minimal"
-          >
-            <div className="theme-preview theme-preview-dark">
-              <div className="motion-preview-icon minimal-icon">
-                <Zap size={22} className="text-cyan" />
-              </div>
-            </div>
-            <div className="theme-card-info">
-              <b>{t('settings.motion.minimal')}</b>
-              <small>{t('settings.motion.minimalDesc')}</small>
-            </div>
-            {motionMode === 'minimal' && <span className="theme-check"><Check size={14} /></span>}
-          </button>
 
-          {/* Mode 2: Cinematic */}
-          <button
-            className={`theme-card ${motionMode === 'cinematic' ? 'theme-active' : ''}`}
-            onClick={() => applyMotion('cinematic')}
-            data-testid="button-motion-cinematic"
-          >
-            <div className="theme-preview theme-preview-dark">
-              <div className="motion-preview-icon cinematic-icon">
-                <span className="motion-ring" />
-                <span className="motion-dot" />
+        {/* 3. Motion & Animation */}
+        <div className="desktop-settings-group">
+          <div className="group-header">
+            <Zap size={16} className="text-amber-400" />
+            <div>
+              <b>{t('settings.desktop.motionSection')}</b>
+              <small className="block text-muted-foreground">{t('settings.desktop.motionDesc')}</small>
+            </div>
+          </div>
+          <div className="theme-cards">
+            <button
+              className={`theme-card ${motionMode === 'minimal' ? 'theme-active' : ''}`}
+              onClick={() => applyMotion('minimal')}
+              data-testid="button-motion-minimal"
+            >
+              <div className="theme-preview theme-preview-dark">
+                <div className="motion-preview-icon minimal-icon">
+                  <Zap size={22} className="text-cyan" />
+                </div>
               </div>
+              <div className="theme-card-info">
+                <b>{t('settings.desktop.minimal')}</b>
+                <small>{t('settings.desktop.minimalDesc')}</small>
+              </div>
+              {motionMode === 'minimal' && <span className="theme-check"><Check size={14} /></span>}
+            </button>
+            <button
+              className={`theme-card ${motionMode === 'cinematic' ? 'theme-active' : ''}`}
+              onClick={() => applyMotion('cinematic')}
+              data-testid="button-motion-cinematic"
+            >
+              <div className="theme-preview theme-preview-dark">
+                <div className="motion-preview-icon cinematic-icon">
+                  <span className="motion-ring" />
+                  <span className="motion-dot" />
+                </div>
+              </div>
+              <div className="theme-card-info">
+                <b>{t('settings.desktop.cinematic')}</b>
+                <small>{t('settings.desktop.cinematicDesc')}</small>
+              </div>
+              {motionMode === 'cinematic' && <span className="theme-check"><Check size={14} /></span>}
+            </button>
+          </div>
+        </div>
+
+        {/* 4. Windows PC Native Behaviors */}
+        <div className="desktop-settings-group">
+          <div className="group-header">
+            <Monitor size={16} className="text-purple-400" />
+            <div>
+              <b>{t('settings.desktop.systemBehaviorSection')}</b>
+              <small className="block text-muted-foreground">{t('settings.desktop.systemBehaviorDesc')}</small>
             </div>
-            <div className="theme-card-info">
-              <b>{t('settings.motion.cinematic')}</b>
-              <small>{t('settings.motion.cinematicDesc')}</small>
+          </div>
+          <div className="desktop-toggle-list">
+            {/* Auto Start */}
+            <div className="desktop-toggle-row panel-subtle">
+              <div className="desktop-toggle-info">
+                <div className="desktop-toggle-title">
+                  <Monitor size={16} className="text-cyan" />
+                  <b>{t('settings.desktop.autoLaunchTitle')}</b>
+                </div>
+                <p>{t('settings.desktop.autoLaunchDesc')}</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoStart}
+                className={`toggle ${autoStart ? 'toggle-on' : ''}`}
+                onClick={() => {
+                  const next = !autoStart;
+                  setAutoStart(next);
+                  notify(next ? (locale === 'ar' ? 'تم تفعيل التشغيل التلقائي مع الويندوز' : 'Auto-launch enabled') : (locale === 'ar' ? 'تم تعطيل التشغيل التلقائي' : 'Auto-launch disabled'));
+                }}
+                data-testid="toggle-pc-autostart"
+              >
+                <span />
+              </button>
             </div>
-            {motionMode === 'cinematic' && <span className="theme-check"><Check size={14} /></span>}
-          </button>
+
+            {/* Run in Background */}
+            <div className="desktop-toggle-row panel-subtle">
+              <div className="desktop-toggle-info">
+                <div className="desktop-toggle-title">
+                  <Cpu size={16} className="text-emerald-400" />
+                  <b>{t('settings.desktop.backgroundTitle')}</b>
+                </div>
+                <p>{t('settings.desktop.backgroundDesc')}</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={runInBackground}
+                className={`toggle ${runInBackground ? 'toggle-on' : ''}`}
+                onClick={() => {
+                  const next = !runInBackground;
+                  setRunInBackground(next);
+                  notify(next ? (locale === 'ar' ? 'البرنامج سيبقى نشطاً في الخلفية (System Tray)' : 'Background tray mode enabled') : (locale === 'ar' ? 'البرنامج سيغلق بالكامل عند الخروج' : 'Background tray mode disabled'));
+                }}
+                data-testid="toggle-pc-background"
+              >
+                <span />
+              </button>
+            </div>
+
+            {/* GPU Acceleration */}
+            <div className="desktop-toggle-row panel-subtle">
+              <div className="desktop-toggle-info">
+                <div className="desktop-toggle-title">
+                  <Zap size={16} className="text-amber-400" />
+                  <b>{t('settings.desktop.hardwareTitle')}</b>
+                </div>
+                <p>{t('settings.desktop.hardwareDesc')}</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={gpuAcceleration}
+                className={`toggle ${gpuAcceleration ? 'toggle-on' : ''}`}
+                onClick={() => {
+                  const next = !gpuAcceleration;
+                  setGpuAcceleration(next);
+                  notify(next ? (locale === 'ar' ? 'تم تفعيل تسريع كرت الشاشة GPU' : 'GPU acceleration enabled') : (locale === 'ar' ? 'تم إيقاف تسريع العتاد' : 'GPU acceleration disabled'));
+                }}
+                data-testid="toggle-pc-gpu"
+              >
+                <span />
+              </button>
+            </div>
+
+            {/* Global Hotkeys */}
+            <div className="desktop-toggle-row panel-subtle">
+              <div className="desktop-toggle-info">
+                <div className="desktop-toggle-title">
+                  <HardDrive size={16} className="text-purple-400" />
+                  <b>{t('settings.desktop.globalHotkeysTitle')}</b>
+                </div>
+                <p>{t('settings.desktop.globalHotkeysDesc')}</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={globalHotkeys}
+                className={`toggle ${globalHotkeys ? 'toggle-on' : ''}`}
+                onClick={() => {
+                  const next = !globalHotkeys;
+                  setGlobalHotkeys(next);
+                  notify(next ? (locale === 'ar' ? 'تم تفعيل اختصارات النظام العامة' : 'Global system hotkeys active') : (locale === 'ar' ? 'تم تعطيل الاختصارات العامة' : 'Global hotkeys disabled'));
+                }}
+                data-testid="toggle-pc-hotkeys"
+              >
+                <span />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     ),
@@ -561,38 +723,6 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
               <p>{t('settings.privacy.ownershipDesc')}</p>
             </div>
           </div>
-        </div>
-      </div>
-    ),
-
-    language: (
-      <div className="settings-form">
-        <div className="settings-section-heading">
-          <span className="settings-icon"><Globe size={16} /></span>
-          <div>
-            <h2>{t('settings.language.title')}</h2>
-            <p>{t('settings.language.desc')}</p>
-          </div>
-        </div>
-        <div className="form-group">
-          <label htmlFor="settings-app-language">
-            <span>{t('settings.language.appLanguage')}</span>
-          </label>
-          <select
-            id="settings-app-language"
-            value={pendingLocale}
-            onChange={(e) => setPendingLocale(e.target.value as Locale)}
-            className="settings-select"
-          >
-            <option value="en">{t('settings.language.english')}</option>
-            <option value="ar">{t('settings.language.arabic')}</option>
-          </select>
-        </div>
-        <div className="settings-actions">
-          <button className="btn btn-accent focus-ring" onClick={handleSaveLocale}>
-            <Check size={14} />
-            {t('settings.language.saveApply')}
-          </button>
         </div>
       </div>
     ),
