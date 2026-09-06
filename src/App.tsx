@@ -132,7 +132,7 @@ function AppShell({ children, locale, toast }: { children: ReactNode; locale: Lo
         <Button variant="ghost" className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open navigation" data-testid="button-open-navigation"><Menu size={19} /></Button>
         <div className="crumb mono"><span className="crumb-signal" />CORTEX / {location === '/' ? 'OVERVIEW' : location.slice(1).toUpperCase()}</div>
         <div className="topbar-actions">
-          <button className="search-trigger" onClick={() => setSearchOpen(true)} data-testid="button-command-search"><Search size={15} /><span>{label('Command search', 'بحث الأوامر')}</span><kbd>⌘ K</kbd></button>
+          <button className="search-trigger" onClick={() => setSearchOpen(true)} data-testid="button-command-search"><Search size={15} /><span>{label('Command search', 'بحث الأوامر')}</span><kbd>Ctrl+K</kbd></button>
           <div className="sync-badge"><span className="pulse-dot" />{label('Synced locally', 'متزامن محلياً')}</div>
         </div>
       </header>
