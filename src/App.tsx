@@ -67,10 +67,40 @@ const navGroups = [
 function usePersistent<T>(key: string, initial: T): [T, (value: T | ((current: T) => T)) => void] {
   const [value, setValue] = useState<T>(() => {
     if (typeof window === 'undefined') return initial;
-    try { const saved = localStorage.getItem(key); return saved ? JSON.parse(saved) as T : initial; } catch { return initial; }
+    try {
+      const saved = localStorage.getItem(key);
+      return saved !== null ? (JSON.parse(saved) as T) : initial;
+    } catch {
+      return initial;
+    }
   });
-  useEffect(() => { localStorage.setItem(key, JSON.stringify(value)); }, [key, value]);
-  return [value, setValue];
+
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === key && e.newValue !== null) {
+        try {
+          setValue(JSON.parse(e.newValue) as T);
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [key]);
+
+  const update = (next: T | ((current: T) => T)) => {
+    setValue((current) => {
+      const resolved = typeof next === 'function' ? (next as (c: T) => T)(current) : next;
+      try {
+        localStorage.setItem(key, JSON.stringify(resolved));
+        window.dispatchEvent(new StorageEvent('storage', { key, newValue: JSON.stringify(resolved) }));
+      } catch (e) {
+        console.error(e);
+      }
+      return resolved;
+    });
+  };
+
+  return [value, update];
 }
 
 function tr(locale: Locale, en: string, ar: string) { return locale === 'ar' ? ar : en; }
@@ -154,6 +184,12 @@ function Overview({ locale, notify }: { locale: Locale; notify: (message: string
   const [focus, setFocus] = usePersistent('cortex-focus', false);
   const [turbo, setTurbo] = usePersistent('cortex-turbo', false);
   const label = (en: string, ar: string) => tr(locale, en, ar);
+  const getGreeting = () => {
+    const hour = now.getHours();
+    if (hour < 12) return label('Good morning, Abdulrahman.', 'صباح الخير، عبد الرحمن.');
+    if (hour < 18) return label('Good afternoon, Abdulrahman.', 'طاب يومك، عبد الرحمن.');
+    return label('Good evening, Abdulrahman.', 'مساء الخير، عبد الرحمن.');
+  };
   const modules = [
     { href: '/projects', icon: FolderKanban, title: label('Projects Vault', 'خزنة المشاريع'), meta: '04 active', tone: 'cyan' },
     { href: '/study', icon: BookOpen, title: label('Study Hub', 'مركز الدراسة'), meta: '02 sessions', tone: 'green' },
@@ -163,12 +199,14 @@ function Overview({ locale, notify }: { locale: Locale; notify: (message: string
     { href: '/deadlines', icon: CalendarClock, title: label('Deadline Radar', 'رادار المواعيد'), meta: '04 upcoming', tone: 'pink' },
   ];
   return <div>
-    <SectionTitle eyebrow="01 / COCKPIT" title={label('Good evening, Sam.', 'مساء الخير، سام.')} detail={label('Your desk is quiet. Your context is loaded.', 'مكتبك هادئ. سياقك جاهز.')} action={<div className="clock-block"><span className="mono">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span><small>{now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}</small></div>} />
+    <SectionTitle eyebrow="01 / COCKPIT" title={getGreeting()} detail={label('Your desk is quiet. Your context is loaded.', 'مكتبك هادئ. سياقك جاهز.')} action={<div className="clock-block"><span className="mono">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span><small>{now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}</small></div>} />
     <div className="overview-grid">
       <section className="hero-panel panel shell-grid">
         <div className="hero-top"><span className="eyebrow mono"><span className="pulse-dot live-dot" />{label('SYSTEM READY', 'النظام جاهز')}</span><span className="mono quiet">SESSION 04:28:16</span></div>
-         <div className="hero-copy"><h2>{locale === 'ar' ? <>مكتب واحد.<br /><em>كل الإشارات.</em></> : <>One desk.<br /><em>Every signal.</em></>}</h2><p>{label('Projects, lectures, hardware, and play — held in one fast local context.', 'مشاريعك ومحاضراتك وأجهزتك ووقتك — في سياق محلي سريع.')}</p></div>
-        <div className="hero-actions"><Button variant="accent" onClick={() => { setFocus(!focus); notify(focus ? label('Focus mode off', 'تم إيقاف التركيز') : label('Focus mode on', 'تم تشغيل التركيز')); }} data-testid="button-focus-mode"><Zap size={15} />{focus ? label('Exit focus mode', 'إنهاء التركيز') : label('Start focus mode', 'بدء التركيز')}</Button><span className="mono action-hint">⌘ + ENTER</span></div>
+        <div className="hero-content-wrap">
+          <div className="hero-copy"><h2>{locale === 'ar' ? <>مكتب واحد.<br /><em>كل الإشارات.</em></> : <>One desk.<br /><em>Every signal.</em></>}</h2><p>{label('Projects, lectures, hardware, and play — held in one fast local context.', 'مشاريعك ومحاضراتك وأجهزتك ووقتك — في سياق محلي سريع.')}</p></div>
+          <div className="hero-actions"><Button variant="accent" onClick={() => { const next = !focus; setFocus(next); notify(next ? label('Focus mode active', 'تم تشغيل وضع التركيز') : label('Focus mode off', 'تم إيقاف وضع التركيز')); }} data-testid="button-focus-mode"><Zap size={15} />{focus ? label('Exit focus mode', 'إنهاء التركيز') : label('Start focus mode', 'بدء التركيز')}</Button><span className="mono action-hint">Ctrl + Enter</span></div>
+        </div>
         <div className="hero-foot"><span><span className="tiny-led cyan" />{label('All systems nominal', 'كل الأنظمة مستقرة')}</span><span className="mono">LOCAL ONLY · NO CLOUD</span></div>
       </section>
       <section className="telemetry panel">
@@ -179,7 +217,7 @@ function Overview({ locale, notify }: { locale: Locale; notify: (message: string
     </div>
     <div className="overview-lower">
        <section className="module-section"><div className="section-mini-head"><span className="eyebrow mono">{label('MODULES', 'الوحدات')}</span><span className="mono quiet">07 AVAILABLE</span></div><div className="module-grid">{[...modules, { href: '/media', icon: Disc3, title: label('Dynamic Island', 'الجزيرة الديناميكية'), meta: 'PLAYING · 04:12', tone: 'cyan' }].map(({ href, icon: Icon, title, meta, tone }, index) => <Link href={href} key={`${href}-${title}`} className={`module-card tone-${tone}`} data-testid={`link-module-${index}`}><span className="module-index mono">0{index + 1}</span><span className="module-icon"><Icon size={20} /></span><span className="module-title">{title}</span><span className="module-meta mono">{meta}<ArrowUpRight size={13} /></span></Link>)}</div></section>
-      <aside className="quick-stack"><div className="section-mini-head"><span className="eyebrow mono">{label('QUICK SYSTEMS', 'أنظمة سريعة')}</span></div><div className="quick-item"><span className="quick-icon"><Power size={15} /></span><span><b>{label('Turbo Mode', 'الوضع السريع')}</b><small>{turbo ? label('Performance profile active', 'ملف الأداء مفعل') : label('Balanced performance', 'أداء متوازن')}</small></span><button className={`toggle ${turbo ? 'toggle-on' : ''}`} onClick={() => { setTurbo(!turbo); notify(turbo ? 'Turbo Mode disabled' : 'Turbo Mode enabled'); }} aria-label="Toggle Turbo Mode" data-testid="button-toggle-turbo"><span /></button></div><div className="quick-item"><span className="quick-icon"><Database size={15} /></span><span><b>{label('Local database', 'قاعدة البيانات المحلية')}</b><small>128 records · 4.7 MB</small></span><span className="status-pill status-active">READY</span></div></aside>
+      <aside className="quick-stack"><div className="section-mini-head"><span className="eyebrow mono">{label('QUICK SYSTEMS', 'أنظمة سريعة')}</span></div><div className="quick-item"><span className="quick-icon"><Power size={15} /></span><span><b>{label('Turbo Mode', 'الوضع السريع')}</b><small>{turbo ? label('Performance profile active', 'ملف الأداء مفعل') : label('Balanced performance', 'أداء متوازن')}</small></span><button type="button" role="switch" aria-checked={turbo} className={`toggle ${turbo ? 'toggle-on' : ''}`} onClick={() => { const next = !turbo; setTurbo(next); notify(next ? label('Turbo Mode enabled — priority boosted', 'تم تفعيل الوضع السريع') : label('Turbo Mode disabled — balanced profile', 'تم إيقاف الوضع السريع')); }} aria-label="Toggle Turbo Mode" data-testid="button-toggle-turbo"><span /></button></div><div className="quick-item"><span className="quick-icon"><Database size={15} /></span><span><b>{label('Local database', 'قاعدة البيانات المحلية')}</b><small>128 records · 4.7 MB</small></span><span className="status-pill status-active">READY</span></div></aside>
     </div>
   </div>;
 }
@@ -222,7 +260,7 @@ function Games({ locale, notify }: { locale: Locale; notify: (message: string) =
   const [turbo, setTurbo] = usePersistent('cortex-turbo', false);
   const games = [{ title: 'Hades II', meta: 'Last played 2d ago', color: 'coral', icon: 'H2' }, { title: 'The Finals', meta: 'Last played 5d ago', color: 'blue', icon: 'TF' }, { title: 'Factorio', meta: 'Last played 8d ago', color: 'amber', icon: 'FC' }];
   const label = (en: string, ar: string) => tr(locale, en, ar);
-  return <div><SectionTitle eyebrow="04 / OFF HOURS" title={label('Game Hub', 'مركز الألعاب')} detail={label('A clean launch surface between deep work sessions.', 'مساحة إطلاق نظيفة بين جلسات العمل.')} action={<div className="turbo-control"><Power size={14} /><span>Turbo Mode</span><button className={`toggle ${turbo ? 'toggle-on' : ''}`} onClick={() => { setTurbo(!turbo); notify(turbo ? 'Turbo Mode disabled' : 'Turbo Mode enabled — priority boosted'); }} data-testid="button-games-turbo"><span /></button></div>} /><div className="game-feature panel shell-grid"><div><span className="eyebrow mono">READY TO PLAY</span><h2>Make space<br /><em>for play.</em></h2><p>Games launch through a safe local mock handler. No launcher accounts required.</p></div><div className="game-feature-mark"><Gamepad2 size={48} strokeWidth={1} /><span className="mono">LOCAL<br />QUEUE</span></div></div><div className="game-grid">{games.map((game, index) => <article className={`game-card panel game-${game.color}`} key={game.title}><div className="game-art"><span>{game.icon}</span><small className="mono">0{index + 1}</small></div><div className="game-info"><h3>{game.title}</h3><p>{game.meta}</p><Button variant="outline" onClick={() => notify(`${game.title} launch queued`)} data-testid={`button-launch-game-${index}`}><Play size={13} />Launch</Button></div></article>)}</div><div className="game-status panel-subtle"><Gauge size={16} /><span><b>{turbo ? 'Turbo profile engaged' : 'Balanced profile'}</b><small>{turbo ? 'CPU priority raised for your next launch.' : 'System will keep background tasks balanced.'}</small></span><span className="mono quiet">MOCK HANDLER READY</span></div></div>;
+  return <div><SectionTitle eyebrow="04 / OFF HOURS" title={label('Game Hub', 'مركز الألعاب')} detail={label('A clean launch surface between deep work sessions.', 'مساحة إطلاق نظيفة بين جلسات العمل.')} action={<div className="turbo-control"><Power size={14} /><span>Turbo Mode</span><button type="button" role="switch" aria-checked={turbo} className={`toggle ${turbo ? 'toggle-on' : ''}`} onClick={() => { const next = !turbo; setTurbo(next); notify(next ? label('Turbo Mode enabled — priority boosted', 'تم تفعيل الوضع السريع') : label('Turbo Mode disabled — balanced profile', 'تم إيقاف الوضع السريع')); }} data-testid="button-games-turbo" aria-label="Toggle Turbo Mode"><span /></button></div>} /><div className="game-feature panel shell-grid"><div><span className="eyebrow mono">READY TO PLAY</span><h2>Make space<br /><em>for play.</em></h2><p>Games launch through a safe local mock handler. No launcher accounts required.</p></div><div className="game-feature-mark"><Gamepad2 size={48} strokeWidth={1} /><span className="mono">LOCAL<br />QUEUE</span></div></div><div className="game-grid">{games.map((game, index) => <article className={`game-card panel game-${game.color}`} key={game.title}><div className="game-art"><span>{game.icon}</span><small className="mono">0{index + 1}</small></div><div className="game-info"><h3>{game.title}</h3><p>{game.meta}</p><Button variant="outline" onClick={() => notify(`${game.title} launch queued`)} data-testid={`button-launch-game-${index}`}><Play size={13} />Launch</Button></div></article>)}</div><div className="game-status panel-subtle"><Gauge size={16} /><span><b>{turbo ? 'Turbo profile engaged' : 'Balanced profile'}</b><small>{turbo ? 'CPU priority raised for your next launch.' : 'System will keep background tasks balanced.'}</small></span><span className="mono quiet">MOCK HANDLER READY</span></div></div>;
 }
 
 function Media({ locale, notify }: { locale: Locale; notify: (message: string) => void }) {
@@ -303,7 +341,7 @@ function Settings({ locale, setLocale, notify }: { locale: Locale; setLocale: (l
       <div className="settings-section-heading"><span className="settings-icon"><SunMedium size={16} /></span><div><h2>{settingLabel('General & Language', 'عام واللغة')}</h2><p>{settingLabel('Set the language and density of the CortexOS workspace.', 'حدد لغة وكثافة مساحة عمل CortexOS.')}</p></div></div>
       <div className="settings-field-grid">
         <label className="setting-field"><span>{settingLabel('App language', 'لغة التطبيق')}</span><select value={locale} onChange={(event) => { const next = event.target.value as Locale; setLocale(next); notify(next === 'ar' ? 'العربية · RTL' : 'English · LTR'); }}><option value="en">English (LTR)</option><option value="ar">العربية (RTL)</option></select></label>
-        <div className="setting-row"><span><b>{settingLabel('Compact density', 'الكثافة المضغوطة')}</b><small>{settingLabel('Reduce spacing across the cockpit.', 'تقليل المسافات في المركز.')}</small></span><button className={`toggle ${compact ? 'toggle-on' : ''}`} onClick={() => setCompact(!compact)} aria-label="Toggle compact density"><span /></button></div>
+        <div className="setting-row"><span><b>{settingLabel('Compact density', 'الكثافة المضغوطة')}</b><small>{settingLabel('Reduce spacing across the cockpit.', 'تقليل المسافات في المركز.')}</small></span><button type="button" role="switch" aria-checked={compact} className={`toggle ${compact ? 'toggle-on' : ''}`} onClick={() => { const next = !compact; setCompact(next); notify(next ? settingLabel('Compact mode enabled', 'تم تفعيل الكثافة المضغوطة') : settingLabel('Compact mode disabled', 'تم إلغاء الكثافة المضغوطة')); }} aria-label="Toggle compact density"><span /></button></div>
       </div>
     </div>,
     cloud: <div className="settings-form">
@@ -326,12 +364,12 @@ function Settings({ locale, setLocale, notify }: { locale: Locale; setLocale: (l
     hardware: <div className="settings-form">
       <div className="settings-section-heading"><span className="settings-icon"><Cpu size={16} /></span><div><h2>{settingLabel('Hardware & Turbo', 'الأجهزة والوضع السريع')}</h2><p>{settingLabel('Tune how the desktop bridge behaves during focused work.', 'اضبط سلوك جسر سطح المكتب أثناء العمل المركز.')}</p></div></div>
       <label className="setting-field"><span>Power profile</span><select value={powerProfile} onChange={(event) => setPowerProfile(event.target.value)}><option value="balanced">Balanced</option><option value="performance">High Performance</option></select></label>
-      <div className="setting-row"><span><b>Hardware bridge</b><small>Browser-safe mock outside the Tauri shell.</small></span><button className={`toggle ${hardware ? 'toggle-on' : ''}`} onClick={() => setHardware(!hardware)} aria-label="Toggle hardware bridge"><span /></button></div>
-      <div className="setting-row"><span><b>Process priority</b><small>Prefer development processes during active sessions.</small></span><button className={`toggle ${processPriority ? 'toggle-on' : ''}`} onClick={() => setProcessPriority(!processPriority)} aria-label="Toggle process priority"><span /></button></div>
+      <div className="setting-row"><span><b>Hardware bridge</b><small>Browser-safe mock outside the Tauri shell.</small></span><button type="button" role="switch" aria-checked={hardware} className={`toggle ${hardware ? 'toggle-on' : ''}`} onClick={() => { const next = !hardware; setHardware(next); notify(next ? settingLabel('Hardware bridge enabled', 'تم تفعيل جسر الأجهزة') : settingLabel('Hardware bridge disabled', 'تم إيقاف جسر الأجهزة')); }} aria-label="Toggle hardware bridge"><span /></button></div>
+      <div className="setting-row"><span><b>Process priority</b><small>Prefer development processes during active sessions.</small></span><button type="button" role="switch" aria-checked={processPriority} className={`toggle ${processPriority ? 'toggle-on' : ''}`} onClick={() => { const next = !processPriority; setProcessPriority(next); notify(next ? settingLabel('Process priority enabled', 'تم رفع أولوية المعالجة') : settingLabel('Process priority normal', 'أولوية المعالجة عادية')); }} aria-label="Toggle process priority"><span /></button></div>
     </div>,
     audio: <div className="settings-form">
       <div className="settings-section-heading"><span className="settings-icon"><Volume2 size={16} /></span><div><h2>{settingLabel('Audio & Media', 'الصوت والوسائط')}</h2><p>{settingLabel('Control sound cues and the default ambient workspace level.', 'تحكم في أصوات التنبيه ومستوى الوسائط الافتراضي.')}</p></div></div>
-      <div className="setting-row"><span><b>Sound effects</b><small>Play short confirmation cues for local actions.</small></span><button className={`toggle ${sound ? 'toggle-on' : ''}`} onClick={() => setSound(!sound)} aria-label="Toggle sound effects"><span /></button></div>
+      <div className="setting-row"><span><b>Sound effects</b><small>Play short confirmation cues for local actions.</small></span><button type="button" role="switch" aria-checked={sound} className={`toggle ${sound ? 'toggle-on' : ''}`} onClick={() => { const next = !sound; setSound(next); notify(next ? settingLabel('Sound effects enabled', 'تم تفعيل المؤثرات الصوتية') : settingLabel('Sound effects muted', 'تم كتم المؤثرات الصوتية')); }} aria-label="Toggle sound effects"><span /></button></div>
       <label className="setting-field"><span>Master volume <b className="range-value">{volume}%</b></span><input type="range" min="0" max="100" value={volume} onChange={(event) => setVolume(Number(event.target.value))} /></label>
       <label className="setting-field"><span>Ambient preset</span><select defaultValue="lofi"><option value="lofi">Night study · Lo-Fi</option><option value="rain">Rain on glass</option><option value="circuit">Soft circuit</option></select></label>
     </div>,
@@ -346,7 +384,49 @@ function App() {
   const [toast, setToast] = useState('');
   useEffect(() => { document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr'; document.documentElement.lang = locale; }, [locale]);
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2400); };
-  return <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><ErrorBoundary><TooltipProvider><AppShell locale={locale} toast={toast}><Switch><Route path="/" component={() => <Overview locale={locale} notify={notify} />} /><Route path="/overview" component={() => <Overview locale={locale} notify={notify} />} /><Route path="/projects" component={() => <Projects locale={locale} notify={notify} />} /><Route path="/study" component={() => <Study locale={locale} notify={notify} />} /><Route path="/games" component={() => <Games locale={locale} notify={notify} />} /><Route path="/media" component={() => <Media locale={locale} notify={notify} />} /><Route path="/janitor" component={() => <Janitor locale={locale} notify={notify} />} /><Route path="/deadlines" component={() => <Deadlines locale={locale} notify={notify} />} /><Route path="/settings" component={() => <Settings locale={locale} setLocale={setLocale} notify={notify} />} /><Route component={NotFound} /></Switch></AppShell><Toaster /></TooltipProvider></ErrorBoundary></WouterRouter>;
+  return (
+    <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+      <ErrorBoundary>
+        <TooltipProvider>
+          <AppShell locale={locale} toast={toast}>
+            <Switch>
+              <Route path="/">
+                <Overview locale={locale} notify={notify} />
+              </Route>
+              <Route path="/overview">
+                <Overview locale={locale} notify={notify} />
+              </Route>
+              <Route path="/projects">
+                <Projects locale={locale} notify={notify} />
+              </Route>
+              <Route path="/study">
+                <Study locale={locale} notify={notify} />
+              </Route>
+              <Route path="/games">
+                <Games locale={locale} notify={notify} />
+              </Route>
+              <Route path="/media">
+                <Media locale={locale} notify={notify} />
+              </Route>
+              <Route path="/janitor">
+                <Janitor locale={locale} notify={notify} />
+              </Route>
+              <Route path="/deadlines">
+                <Deadlines locale={locale} notify={notify} />
+              </Route>
+              <Route path="/settings">
+                <Settings locale={locale} setLocale={setLocale} notify={notify} />
+              </Route>
+              <Route>
+                <NotFound />
+              </Route>
+            </Switch>
+          </AppShell>
+          <Toaster />
+        </TooltipProvider>
+      </ErrorBoundary>
+    </WouterRouter>
+  );
 }
 
 export default App;
