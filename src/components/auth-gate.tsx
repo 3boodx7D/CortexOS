@@ -59,8 +59,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         <div className="auth-glow-backdrop" aria-hidden="true">
           <div className="auth-glow-orb auth-glow-primary" />
         </div>
-        <div className="auth-spinner">
-          <BrainCircuit size={36} />
+        <div className="auth-logo-pulse">
+          <img src="/logo.png" alt="CortexOS" className="auth-logo-pulse-img" />
         </div>
         <span className="mono font-bold tracking-widest text-lg">CORTEX<span className="text-[hsl(var(--primary))]">OS</span></span>
         <small className="text-muted-foreground text-xs tracking-wider">ESTABLISHING QUANTUM LINK...</small>
@@ -156,8 +156,8 @@ function LoginScreen({
 
       <div className="auth-card">
         <div className="auth-brand">
-          <div className="auth-brand-mark">
-            <BrainCircuit size={28} />
+          <div className="auth-brand-mark auth-brand-logo-wrap">
+            <img src="/logo.png" alt="CortexOS" className="auth-brand-logo-img" />
           </div>
           <div>
             <strong>CORTEX<span>OS</span></strong>

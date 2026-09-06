@@ -48,8 +48,8 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
       {/* Sidebar */}
       <aside className={`sidebar ${mobileNav ? 'sidebar-open' : ''}`}>
         <div className="brand-lockup">
-          <div className="brand-mark">
-            <BrainCircuit size={22} />
+          <div className="brand-mark brand-logo-wrap">
+            <img src="/logo.png" alt="CortexOS" className="brand-logo-img" />
           </div>
           <div>
             <strong>CORTEX<span>OS</span></strong>

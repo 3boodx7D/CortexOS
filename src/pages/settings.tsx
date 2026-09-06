@@ -383,9 +383,12 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
         </div>
 
         <div className="about-hero panel-subtle">
-          <div className="about-version-chip mono">
-            <span className="pulse-dot-green" />
-            <strong>{t('settings.about.version')}</strong>
+          <div className="about-hero-header">
+            <img src="/logo.png" alt="CortexOS Logo" className="about-logo-img" />
+            <div className="about-version-chip mono">
+              <span className="pulse-dot-green" />
+              <strong>{t('settings.about.version')}</strong>
+            </div>
           </div>
 
           <div className="about-grid">
