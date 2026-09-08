@@ -28,6 +28,23 @@ export async function updatePassword(newPassword: string) {
   return data;
 }
 
+export async function verifyAndChangePassword(email: string, oldPass: string, newPass: string) {
+  // First, verify the old password by signing in
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email,
+    password: oldPass,
+  });
+  
+  if (signInError) {
+    throw new Error('settings.account.incorrectOldPassword'); // Using localization key
+  }
+  
+  // Then update to the new password
+  const { data, error: updateError } = await supabase.auth.updateUser({ password: newPass });
+  if (updateError) throw updateError;
+  return data;
+}
+
 export async function signOut() {
   localStorage.removeItem('cortex-guest-mode');
   try {

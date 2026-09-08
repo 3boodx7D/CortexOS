@@ -11,12 +11,13 @@ interface UserStoreContextType {
   role: string;
   bio: string;
   avatarChar: string;
+  avatarUrl: string;
   syncStatus: 'synced' | 'syncing' | 'offline' | 'saved_locally';
   lastSynced: string | null;
   syncAllToCloud: () => Promise<boolean>;
   getScopedKey: (key: string) => string;
   updateDisplayName: (name: string) => Promise<boolean>;
-  updateProfile: (updates: { displayName?: string; role?: string; bio?: string }) => Promise<boolean>;
+  updateProfile: (updates: { displayName?: string; role?: string; bio?: string; avatarUrl?: string }) => Promise<boolean>;
 }
 
 const UserStoreContext = createContext<UserStoreContextType | null>(null);
@@ -59,6 +60,10 @@ export function UserStoreProvider({
     if (typeof window === 'undefined') return '';
     return localStorage.getItem(`cortex_custom_bio_${userId}`) || '';
   });
+  const [customAvatar, setCustomAvatar] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    return localStorage.getItem(`cortex_custom_avatar_${userId}`) || '';
+  });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -73,6 +78,15 @@ export function UserStoreProvider({
       const storedBio = localStorage.getItem(`cortex_custom_bio_${userId}`);
       if (storedBio) setCustomBio(storedBio);
       else if (user?.user_metadata?.bio) setCustomBio(user.user_metadata.bio);
+
+      const storedAvatar = localStorage.getItem(`cortex_custom_avatar_${userId}`);
+      if (storedAvatar && !storedAvatar.includes('images.unsplash.com')) {
+        setCustomAvatar(storedAvatar);
+      } else if (user?.user_metadata?.avatarUrl && !user.user_metadata.avatarUrl.includes('images.unsplash.com')) {
+        setCustomAvatar(user.user_metadata.avatarUrl);
+      } else {
+        setCustomAvatar('');
+      }
     }
   }, [userId, user]);
 
@@ -80,8 +94,9 @@ export function UserStoreProvider({
   const role = customRole || (user?.user_metadata?.role as string) || 'Lead Engineer';
   const bio = customBio || (user?.user_metadata?.bio as string) || 'Local workspace & neural executive';
   const avatarChar = displayName.charAt(0).toUpperCase() || 'U';
+  const avatarUrl = customAvatar || (user?.user_metadata?.avatarUrl as string) || '/default-avatar.jpg';
 
-  const updateProfile = useCallback(async (updates: { displayName?: string; role?: string; bio?: string }): Promise<boolean> => {
+  const updateProfile = useCallback(async (updates: { displayName?: string; role?: string; bio?: string; avatarUrl?: string }): Promise<boolean> => {
     const nextMeta: Record<string, any> = {};
 
     if (updates.displayName !== undefined) {
@@ -106,6 +121,14 @@ export function UserStoreProvider({
         localStorage.setItem(`cortex_custom_bio_${userId}`, updates.bio);
       }
       nextMeta.bio = updates.bio;
+    }
+
+    if (updates.avatarUrl !== undefined) {
+      setCustomAvatar(updates.avatarUrl);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`cortex_custom_avatar_${userId}`, updates.avatarUrl);
+      }
+      nextMeta.avatarUrl = updates.avatarUrl;
     }
 
     try {
@@ -243,6 +266,7 @@ export function UserStoreProvider({
         role,
         bio,
         avatarChar,
+        avatarUrl,
         syncStatus,
         lastSynced,
         syncAllToCloud,

@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useCallback, useState, useEffect, type ReactNode } from 'react';
 import en from '../locales/en.json';
 import ar from '../locales/ar.json';
 
@@ -22,19 +22,63 @@ export function getStoredLocale(): Locale {
   return 'en';
 }
 
+// Seamless backward-compatible updater with zero page reload
 export function saveLocaleAndReload(locale: Locale): void {
-  localStorage.setItem('cortex-locale', JSON.stringify(locale));
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('cortex-locale', JSON.stringify(locale));
+  } catch {}
+  document.documentElement.classList.add('locale-morph');
   document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
   document.documentElement.lang = locale;
-  window.location.reload();
+  setTimeout(() => {
+    document.documentElement.classList.remove('locale-morph');
+  }, 220);
 }
 
-const I18nContext = createContext<{ locale: Locale; t: (key: string) => string }>({
+export interface I18nContextType {
+  locale: Locale;
+  setLocale: (next: Locale) => void;
+  t: (key: string) => string;
+}
+
+const I18nContext = createContext<I18nContextType>({
   locale: 'en',
+  setLocale: () => {},
   t: (key: string) => key,
 });
 
-export function I18nProvider({ locale, children }: { locale: Locale; children: ReactNode }) {
+export function I18nProvider({ 
+  locale: initialLocale, 
+  children 
+}: { 
+  locale?: Locale; 
+  children: ReactNode; 
+}) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale || getStoredLocale);
+
+  const setLocale = useCallback((next: Locale) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('cortex-locale', JSON.stringify(next));
+    } catch {}
+
+    document.documentElement.classList.add('locale-morph');
+    document.documentElement.dir = next === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = next;
+    setLocaleState(next);
+
+    setTimeout(() => {
+      document.documentElement.classList.remove('locale-morph');
+    }, 220);
+  }, []);
+
+  useEffect(() => {
+    const current = getStoredLocale();
+    document.documentElement.dir = current === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = current;
+  }, []);
+
   const t = useCallback(
     (key: string): string => {
       return getNestedValue(translations[locale], key) || getNestedValue(translations['en'], key) || key;
@@ -42,7 +86,11 @@ export function I18nProvider({ locale, children }: { locale: Locale; children: R
     [locale]
   );
 
-  return <I18nContext.Provider value={{ locale, t }}>{children}</I18nContext.Provider>;
+  return (
+    <I18nContext.Provider value={{ locale, setLocale, t }}>
+      {children}
+    </I18nContext.Provider>
+  );
 }
 
 export function useTranslation() {

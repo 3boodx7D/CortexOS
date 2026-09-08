@@ -14,12 +14,17 @@ export default defineConfig({
     },
     dedupe: ['react', 'react-dom'],
   },
+  clearScreen: false,
   server: {
     port: 5173,
+    strictPort: true,
     host: '0.0.0.0',
+    watch: {
+      ignored: ['**/src-tauri/**'],
+    },
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
       },

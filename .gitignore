@@ -31,3 +31,19 @@ pnpm-debug.log*
 # OS generated
 .DS_Store
 Thumbs.db
+
+# Python backend
+backend/venv/
+backend/.venv/
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Tauri builds
+src-tauri/target/
+src-tauri/gen/schemas/
+

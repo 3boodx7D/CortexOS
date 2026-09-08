@@ -3,15 +3,54 @@ import { Link } from 'wouter';
 import {
   Activity, ArrowUpRight, BrainCircuit, BookOpen, CalendarClock,
   Database, Disc3, FolderKanban, Gamepad2, Headphones, Power,
-  SunMedium, Trash2, Zap,
+  SunMedium, Trash2, Zap, Monitor
 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { useUserPersistent } from '@/lib/user-store';
+import { usePersistent } from '@/hooks/use-persistent';
+import { LiveTelemetryChart } from '@/components/live-telemetry-chart';
+
+type Telemetry = {
+  cpu: { loadPercent: number };
+  memory: { totalGB: number; freeGB: number; usedGB: number; usagePercent: number };
+  gpu: { loadPercent: number };
+  uptime: { seconds: number; hours: number; minutes: number };
+};
+
+export type TelemetryDataPoint = {
+  cpu: number;
+  ram: number;
+  gpu: number;
+};
 
 export default function Overview({ notify }: { notify: (msg: string) => void }) {
   const { t } = useTranslation();
+  const [motionMode] = usePersistent<string>('cortex-motion', 'cinematic');
   const [now, setNow] = useState(new Date());
-  useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 1000); return () => window.clearInterval(timer); }, []);
+  const [telemetry, setTelemetry] = useState<Telemetry | null>(null);
+  const [history, setHistory] = useState<TelemetryDataPoint[]>(Array(30).fill({ cpu: 0, ram: 0, gpu: 0 }));
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(new Date());
+      fetch('/api/system/telemetry')
+        .then(res => res.json())
+        .then(data => {
+          setTelemetry(data);
+          setHistory(prev => {
+            const next = [...prev.slice(1), { 
+              cpu: data.cpu.loadPercent, 
+              ram: data.memory.usagePercent, 
+              gpu: data.gpu ? data.gpu.loadPercent : 0 
+            }];
+            return next;
+          });
+        })
+        .catch(console.error);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const [focus, setFocus] = useUserPersistent('focus', false);
   const [turbo, setTurbo] = useUserPersistent('turbo', false);
 
@@ -27,7 +66,7 @@ export default function Overview({ notify }: { notify: (msg: string) => void }) 
     { href: '/study', icon: BookOpen, title: t('nav.study'), meta: '02 sessions', tone: 'green' },
     { href: '/games', icon: Gamepad2, title: t('nav.games'), meta: '03 installed', tone: 'violet' },
     { href: '/media', icon: Headphones, title: t('nav.media'), meta: '04 tracks', tone: 'orange' },
-    { href: '/janitor', icon: Trash2, title: t('nav.janitor'), meta: '84% clean', tone: 'lime' },
+    { href: '/my-pc', icon: Monitor, title: 'My PC', meta: 'System Info', tone: 'lime' },
     { href: '/deadlines', icon: CalendarClock, title: t('nav.deadlines'), meta: '04 upcoming', tone: 'pink' },
   ];
 
@@ -79,16 +118,13 @@ export default function Overview({ notify }: { notify: (msg: string) => void }) 
             <Activity size={15} className="text-cyan" />
           </div>
           <div className="telemetry-chart">
-            <div className="chart-grid" />
-            <svg viewBox="0 0 460 130" preserveAspectRatio="none">
-              <polyline points="0,96 28,91 48,97 74,64 103,76 127,54 153,68 178,44 203,57 225,48 249,77 277,59 305,67 332,36 361,49 385,30 409,44 436,22 460,28" fill="none" stroke="hsl(187 86% 54%)" strokeWidth="2" />
-            </svg>
-            <span className="chart-now mono">NOW</span>
+            <LiveTelemetryChart data={history} motionMode={motionMode} />
+            <span className="chart-now mono" style={{ position: 'absolute', top: 0, right: 0, fontSize: '10px', color: 'hsl(187 86% 54%)' }}>NOW</span>
           </div>
           <div className="telemetry-stats">
-            <div><span>CPU LOAD</span><b>38.4%</b></div>
-            <div><span>MEMORY</span><b>6.2 <small>GB</small></b></div>
-            <div><span>UPTIME</span><b>18<small>h</small> 42<small>m</small></b></div>
+            <div><span style={{color: '#16d4e9'}}>CPU LOAD</span><b>{telemetry ? telemetry.cpu.loadPercent : '--'}%</b></div>
+            <div><span style={{color: '#a78bfa'}}>RAM LOAD</span><b>{telemetry ? telemetry.memory.usagePercent : '--'}%</b></div>
+            <div><span style={{color: '#4ade80'}}>GPU LOAD</span><b>{telemetry && telemetry.gpu ? telemetry.gpu.loadPercent : '--'}%</b></div>
           </div>
         </section>
       </div>

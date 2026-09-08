@@ -1,13 +1,14 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import {
   BookOpen, BrainCircuit, CalendarClock, Check, ChevronRight, Command,
   FolderKanban, Gamepad2, Headphones, LayoutDashboard, LogOut, Menu,
-  Search, Settings2, Trash2, X,
+  Search, Settings2, Trash2, X, Cpu
 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { signOut } from '@/lib/supabase';
 import { useUserContext } from '@/lib/user-store';
+import { WindowControls } from '@/components/window-controls';
 
 const navItems = [
   { href: '/overview', labelKey: 'nav.overview', icon: LayoutDashboard },
@@ -15,19 +16,20 @@ const navItems = [
   { href: '/study', labelKey: 'nav.study', icon: BookOpen },
   { href: '/games', labelKey: 'nav.games', icon: Gamepad2 },
   { href: '/media', labelKey: 'nav.media', icon: Headphones },
-  { href: '/janitor', labelKey: 'nav.janitor', icon: Trash2 },
+  { href: '/my-pc', labelKey: 'nav.myPc', icon: Cpu },
   { href: '/deadlines', labelKey: 'nav.deadlines', icon: CalendarClock },
+  { href: '/settings', labelKey: 'nav.settings', icon: Settings2 },
 ];
 
 const navGroups = [
   { labelKey: 'nav.workspace', items: [navItems[0], navItems[1]] },
   { labelKey: 'nav.academic', items: [navItems[2], navItems[6]] },
-  { labelKey: 'nav.utilities', items: [navItems[3], navItems[4], navItems[5]] },
+  { labelKey: 'nav.utilities', items: [navItems[3], navItems[4], navItems[5], navItems[7]] },
 ];
 
 export function AppShell({ children, toast }: { children: ReactNode; toast: string }) {
   const { t, locale } = useTranslation();
-  const { displayName, email, avatarChar } = useUserContext();
+  const { displayName, email, avatarChar, avatarUrl } = useUserContext();
   const [location] = useLocation();
   const [mobileNav, setMobileNav] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -79,50 +81,59 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
 
         <div className="sidebar-spacer" />
 
-        <div className="account-card">
-          <div className="account-avatar">{avatarChar}<span className="account-online" /></div>
+        <Link href="/settings" className="account-card" title={t('nav.settings')}>
+          <div className="account-avatar-wrapper">
+            <div className="account-avatar">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={displayName} className="account-avatar-img" />
+              ) : (
+                avatarChar
+              )}
+            </div>
+            <span className="account-online" />
+          </div>
           <div className="account-copy" title={email}>
             <b>{displayName}</b>
             <small className="mono truncate max-w-[130px] block">{email}</small>
           </div>
           <button
+            type="button"
             className="btn btn-ghost account-signout"
-            onClick={handleSignOut}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleSignOut();
+            }}
             aria-label={t('account.signOut')}
             title={t('account.signOut')}
           >
             <LogOut size={15} />
           </button>
-        </div>
-
-        <Link
-          href="/settings"
-          className={`nav-item settings-link ${location === '/settings' ? 'nav-active' : ''}`}
-          data-testid="link-nav-settings"
-        >
-          <Settings2 size={17} /><span>{t('nav.settings')}</span>
         </Link>
       </aside>
 
       {mobileNav && <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMobileNav(false)} />}
 
       <main className="main-area">
-        <header className="topbar">
-          <button className="btn btn-ghost mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open navigation" data-testid="button-open-navigation">
+        <header className="topbar" data-tauri-drag-region>
+          <button className="btn btn-ghost mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open navigation" data-testid="button-open-navigation" data-tauri-drag-region="false">
             <Menu size={19} />
           </button>
-          <div className="crumb mono">
+          <div className="crumb mono" data-tauri-drag-region>
             <span className="crumb-signal" />
             CORTEX / {location === '/' ? 'OVERVIEW' : location.slice(1).toUpperCase()}
           </div>
-          <div className="topbar-actions">
+          
+          <div data-tauri-drag-region style={{ flex: 1, height: '100%', minWidth: '20px' }} />
+
+          <div className="topbar-actions" data-tauri-drag-region="false">
             <button className="search-trigger" onClick={() => setSearchOpen(true)} data-testid="button-command-search">
-              <Search size={15} /><span>{t('app.commandSearch')}</span><kbd>Ctrl+K</kbd>
+              <Search size={14} /><span>{t('app.commandSearch')}</span><kbd>Ctrl+K</kbd>
             </button>
-            <div className="sync-badge">
-              <span className="pulse-dot live-dot" />{t('app.syncBadge')}
-            </div>
           </div>
+
+          {/* Clean Native Windows 11 Window Controls */}
+          <WindowControls />
         </header>
 
         <div className="page-wrap page-in" key={location}>{children}</div>
@@ -130,7 +141,7 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
 
       {/* Simple, tiny version label in bottom right corner: no box, no light */}
       <div className="bottom-corner-version mono" data-testid="text-corner-version">
-        {locale === 'ar' ? 'اصدار تجريبي 0.2.10' : 'Beta 0.2.10'}
+        {locale === 'ar' ? 'اصدار تجريبي 0.2.31' : 'Beta 0.2.31'}
       </div>
 
       {searchOpen && (

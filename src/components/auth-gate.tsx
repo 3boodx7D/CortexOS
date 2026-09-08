@@ -1,12 +1,13 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import {
-  BrainCircuit, CheckCircle2, Loader2, Lock, Moon,
+  AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, Lock, Moon,
   ShieldCheck, Sparkles, Sun,
 } from 'lucide-react';
 import { signIn, signUp, onAuthStateChange, getSession } from '@/lib/supabase';
-import { useTranslation, saveLocaleAndReload } from '@/lib/i18n';
+import { useTranslation } from '@/lib/i18n';
 import { usePersistent } from '@/hooks/use-persistent';
 import { UserStoreProvider } from '@/lib/user-store';
+import { WindowControls } from '@/components/window-controls';
 import type { Session } from '@supabase/supabase-js';
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
@@ -56,6 +57,13 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="auth-gate-loading">
+        <header className="auth-titlebar" data-tauri-drag-region>
+          <div className="auth-titlebar-brand">
+            <img src="/logo.png" alt="CortexOS" />
+            <span>CORTEXOS</span>
+          </div>
+          <WindowControls />
+        </header>
         <div className="auth-glow-backdrop" aria-hidden="true">
           <div className="auth-glow-orb auth-glow-primary" />
         </div>
@@ -87,11 +95,14 @@ function LoginScreen({
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
 }) {
-  const { t, locale } = useTranslation();
+  const { t, locale, setLocale } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -99,14 +110,41 @@ function LoginScreen({
     e.preventDefault();
     setError('');
     setSuccess('');
+    setEmailError('');
+    setPasswordError('');
+
+    // Custom React Validation (No ugly native browser popups)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    let hasValidationError = false;
+
+    if (!email.trim() || !emailRegex.test(email.trim())) {
+      setEmailError(
+        locale === 'ar' 
+          ? "يرجى إدخال عنوان بريد إلكتروني صالح يحتوي على '@'" 
+          : "Please enter a valid email address containing '@'"
+      );
+      hasValidationError = true;
+    }
+
+    if (!password || password.length < 6) {
+      setPasswordError(
+        locale === 'ar' 
+          ? 'كلمة المرور يجب ألا تقل عن 6 أحرف' 
+          : 'Password must be at least 6 characters'
+      );
+      hasValidationError = true;
+    }
+
+    if (hasValidationError) return;
+
     setSubmitting(true);
 
     try {
       if (isSignUp) {
-        await signUp(email, password);
+        await signUp(email.trim(), password);
         setSuccess(t('auth.accountCreated'));
       } else {
-        await signIn(email, password);
+        await signIn(email.trim(), password);
       }
     } catch (err: any) {
       const msg = err?.message || '';
@@ -122,29 +160,44 @@ function LoginScreen({
 
   return (
     <div className="auth-gate">
-      {/* Corner Controls: Theme Switcher & Language Switcher */}
-      <div className="auth-corner-controls">
-        <button
-          type="button"
-          onClick={onToggleTheme}
-          className="auth-control-btn"
-          title={theme === 'dark' ? 'Switch to Light theme' : 'التبديل إلى الوضع الداكن'}
-          aria-label="Toggle theme"
-          data-testid="button-auth-toggle-theme"
-        >
-          {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-        </button>
-        <button
-          type="button"
-          onClick={() => saveLocaleAndReload(locale === 'ar' ? 'en' : 'ar')}
-          className="auth-control-btn mono font-bold"
-          title="Switch Language / تغيير اللغة"
-          aria-label="Toggle language"
-          data-testid="button-auth-toggle-lang"
-        >
-          {locale === 'ar' ? 'EN' : 'عربي'}
-        </button>
-      </div>
+      {/* Native Windows 11 Draggable Titlebar & Window Controls */}
+      <header className="auth-titlebar" data-tauri-drag-region>
+        <div className="auth-titlebar-brand">
+          <img src="/logo.png" alt="CortexOS" />
+          <span>CORTEXOS</span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+          {/* Theme Switcher */}
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            className="auth-control-btn"
+            title={theme === 'dark' ? 'Switch to Light theme' : 'التبديل إلى الوضع الداكن'}
+            aria-label="Toggle theme"
+            data-testid="button-auth-toggle-theme"
+            style={{ width: '32px', height: '28px' }}
+          >
+            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+
+          {/* Seamless In-Place Language Switcher (No reload) */}
+          <button
+            type="button"
+            onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
+            className="auth-control-btn mono font-bold"
+            title="Switch Language / تغيير اللغة"
+            aria-label="Toggle language"
+            data-testid="button-auth-toggle-lang"
+            style={{ width: '40px', height: '28px', fontSize: '11px' }}
+          >
+            {locale === 'ar' ? 'EN' : 'عربي'}
+          </button>
+
+          {/* Native Window Controls (- □ ✕) */}
+          <WindowControls />
+        </div>
+      </header>
 
       {/* Radiant atmospheric ambient glow — zero grid lines */}
       <div className="auth-glow-backdrop" aria-hidden="true">
@@ -173,31 +226,60 @@ function LoginScreen({
           <p>{t('auth.subtitle')}</p>
         </div>
 
-        <form className="auth-form" onSubmit={handleSubmit}>
+        <form className="auth-form" noValidate onSubmit={handleSubmit}>
           <label>
             <span>{t('auth.email')}</span>
             <input
               type="email"
-              required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (emailError) setEmailError('');
+              }}
               placeholder="user@cortex.os"
               autoComplete="email"
               data-testid="input-auth-email"
             />
+            {emailError && (
+              <div className="custom-validation-badge">
+                <AlertCircle size={13} className="shrink-0" />
+                <span>{emailError}</span>
+              </div>
+            )}
           </label>
+
           <label>
             <span>{t('auth.password')}</span>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              autoComplete={isSignUp ? 'new-password' : 'current-password'}
-              minLength={6}
-              data-testid="input-auth-password"
-            />
+            <div className="password-input-wrapper">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (passwordError) setPasswordError('');
+                }}
+                placeholder="••••••••"
+                autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                minLength={6}
+                data-testid="input-auth-password"
+              />
+              <button
+                type="button"
+                className="password-toggle-eye"
+                onClick={() => setShowPassword(!showPassword)}
+                title={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {passwordError && (
+              <div className="custom-validation-badge">
+                <AlertCircle size={13} className="shrink-0" />
+                <span>{passwordError}</span>
+              </div>
+            )}
           </label>
 
           {error && (
@@ -252,6 +334,8 @@ function LoginScreen({
             onClick={() => {
               setIsSignUp(!isSignUp);
               setError('');
+              setEmailError('');
+              setPasswordError('');
               setSuccess('');
             }}
           >
