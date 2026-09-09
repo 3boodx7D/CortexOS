@@ -2,7 +2,8 @@
 ### *The Ultimate AI Reference Manual & Rules of Engagement*
 > **Version:** 1.0.0 (Living Architecture Document)  
 > **Target Audience:** Any AI Assistant (Claude, Gemini, GPT, DeepSeek, etc.) interacting with this repository.  
-> **How to Use:** Mention `@AI.md` in any prompt to immediately load all project rules, architectural constraints, and development workflows.
+> **How to Use:** Mention `@AI.md` in any prompt to immediately load all project rules, architectural constraints, and development workflows.  
+> 📂 **Modular Agent Rules:** All rules are also modularized into dedicated guidelines inside [`.agents/rules/`](file:///d:/dev26-27/app/.agents/rules) and indexed in [`.agents/AGENTS.md`](file:///d:/dev26-27/app/.agents/AGENTS.md).
 
 ---
 

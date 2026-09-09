@@ -21,6 +21,10 @@ import Janitor from '@/pages/janitor';
 import MyPc from '@/pages/my-pc';
 import Deadlines from '@/pages/deadlines';
 import Settings from '@/pages/settings';
+import ProjectDetailsPage from '@/pages/project-details';
+import TeamCollaborationPage from '@/pages/team';
+import FriendsPage from '@/pages/friends';
+import OwnerCockpit from '@/pages/owner-cockpit';
 import NotFound from '@/pages/not-found';
 
 function App() {
@@ -66,6 +70,10 @@ function App() {
                       <Route path="/"><Overview notify={notify} /></Route>
                       <Route path="/overview"><Overview notify={notify} /></Route>
                       <Route path="/projects"><Projects notify={notify} /></Route>
+                      <Route path="/project/:id"><ProjectDetailsPage notify={notify} /></Route>
+                      <Route path="/team"><TeamCollaborationPage notify={notify} /></Route>
+                      <Route path="/collaboration"><TeamCollaborationPage notify={notify} /></Route>
+                      <Route path="/friends"><FriendsPage /></Route>
                       <Route path="/study"><Study notify={notify} /></Route>
                       <Route path="/games"><Games notify={notify} /></Route>
                       <Route path="/media"><Media notify={notify} /></Route>
@@ -73,6 +81,7 @@ function App() {
                       <Route path="/my-pc"><MyPc /></Route>
                       <Route path="/deadlines"><Deadlines notify={notify} /></Route>
                       <Route path="/settings"><Settings notify={notify} /></Route>
+                      <Route path="/owner"><OwnerCockpit /></Route>
                       <Route><NotFound /></Route>
                     </Switch>
                   </AppShell>

@@ -1,40 +1,32 @@
 import { type ChangeEvent, useCallback, useRef, useState, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import {
-  Check, ChevronRight, Cpu, Eye, EyeOff,
+  Check, ChevronRight, Cpu, Crown, Eye, EyeOff,
   HardDrive, Info, KeyRound, Lock, LogOut, Monitor, Moon, Palette, RefreshCw, Save, Shield, ShieldCheck, Sun,
-  Upload, User as UserIcon, Zap, Globe, Sparkles, FolderKanban, Folder, FolderSearch, Camera, Trash2, Copy
+  Upload, User as UserIcon, Zap, Globe, Sparkles, FolderKanban, Folder, FolderSearch, Camera, Trash2, Copy,
+  Code2, Terminal, BrainCircuit, Layers
 } from 'lucide-react';
 import { useTranslation, type Locale } from '@/lib/i18n';
 import { usePersistent } from '@/hooks/use-persistent';
-import { signOut, updatePassword } from '@/lib/supabase';
 import { useUserContext } from '@/lib/user-store';
 import { useDesktopDialog } from '@/components/ui/desktop-dialog';
 import { pickDirectory } from '@/lib/tauri';
+import { AccountSettingsTab } from '@/components/settings/account-settings-tab';
 
 export type MotionMode = 'minimal' | 'cinematic';
 
 export default function Settings({ notify }: { notify: (msg: string) => void }) {
+  const [, setLocation] = useLocation();
   const { t, locale, setLocale } = useTranslation();
   const { confirmDialog } = useDesktopDialog();
   const {
-    email,
     userId,
-    displayName,
-    role,
-    bio,
-    avatarChar,
-    avatarUrl,
-    lastSynced,
     syncAllToCloud,
-    updateProfile,
   } = useUserContext();
 
   const [activeTab, setActiveTab] = useState<'desktop' | 'account' | 'data' | 'privacy' | 'about'>('desktop');
-  const [workspacePath, setWorkspacePath] = usePersistent<string>('cortex-workspace-path', 'C:\\Projects');
+  const [workspacePath, setWorkspacePath] = usePersistent<string>('cortex-workspace-path', 'D:\\dev26-27');
   const [isBrowsingWorkspace, setIsBrowsingWorkspace] = useState(false);
-  const avatarInputRef = useRef<HTMLInputElement>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string>(avatarUrl);
-  const [copiedId, setCopiedId] = useState(false);
 
   // Desktop App (PC) Local-Only settings (stored in localStorage per machine)
   const [theme, setTheme] = usePersistent<'dark' | 'light'>('cortex-theme', 'dark');
@@ -44,67 +36,41 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
   const [gpuAcceleration, setGpuAcceleration] = usePersistent<boolean>('cortex-pc-gpu', true);
   const [globalHotkeys, setGlobalHotkeys] = usePersistent<boolean>('cortex-pc-hotkeys', true);
 
-  // Account Form State
-  const [inputName, setInputName] = useState(displayName);
-  const [inputRole, setInputRole] = useState(role);
-  const [inputBio, setInputBio] = useState(bio);
-  const [savingProfile, setSavingProfile] = useState(false);
+  // Projects Vault & Dev Engine Settings
+  const [defaultIde, setDefaultIde] = usePersistent<string>('cortex-default-ide', 'antigravity');
+  const [customIdes, setCustomIdes] = usePersistent<Array<{ id: string; name: string; command: string }>>(
+    'cortex-custom-ide-commands',
+    [
+      { id: 'antigravity', name: 'Google Antigravity', command: 'antigravity .' },
+      { id: 'cursor', name: 'Cursor AI', command: 'cursor .' },
+      { id: 'code', name: 'Visual Studio Code', command: 'code .' },
+      { id: 'windsurf', name: 'Windsurf', command: 'windsurf .' },
+      { id: 'webstorm', name: 'JetBrains WebStorm', command: 'webstorm .' },
+      { id: 'pycharm', name: 'PyCharm', command: 'pycharm .' },
+      { id: 'subl', name: 'Sublime Text', command: 'subl .' },
+    ]
+  );
+  const [newIdeName, setNewIdeName] = useState('');
+  const [newIdeCommand, setNewIdeCommand] = useState('');
+  const [showAddIde, setShowAddIde] = useState(false);
+  const [autoScanProjects, setAutoScanProjects] = usePersistent<boolean>('cortex-autoscan-projects', true);
+  const [confirmCleanCache, setConfirmCleanCache] = usePersistent<boolean>('cortex-confirm-clean-cache', true);
 
-  // Security Form State
-  const [newPass, setNewPass] = useState('');
-  const [confirmPass, setConfirmPass] = useState('');
-  const [showNewPass, setShowNewPass] = useState(false);
-  const [showConfirmPass, setShowConfirmPass] = useState(false);
-  const [updatingPass, setUpdatingPass] = useState(false);
+  // Study Hub AI Settings
+  const [studyAiModel, setStudyAiModel] = usePersistent<'auto' | 'gemini-lite' | 'gemini-pro' | 'deepseek'>('cortex-study-ai-model', 'auto');
+  const [autoGenerateQuiz, setAutoGenerateQuiz] = usePersistent<boolean>('cortex-study-auto-quiz', true);
+  const [autoGenerateFlashcards, setAutoGenerateFlashcards] = usePersistent<boolean>('cortex-study-auto-flashcards', true);
 
-  // Sync state
-  const [syncingNow, setSyncingNow] = useState(false);
+  // Backup & Restore System
+  const [backupDir, setBackupDir] = usePersistent<string>('cortex-backup-dir', 'D:\\CortexOS_Backups');
+  const [isBrowsingBackupDir, setIsBrowsingBackupDir] = useState(false);
+  const [creatingBackup, setCreatingBackup] = useState(false);
+  const [diskBackups, setDiskBackups] = useState<any[]>([]);
+  const [loadingBackups, setLoadingBackups] = useState(false);
 
   // Backup files
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
-
-  useEffect(() => {
-    setInputName(displayName);
-    setInputRole(role);
-    setInputBio(bio);
-  }, [displayName, role, bio]);
-
-  useEffect(() => {
-    setAvatarPreview(avatarUrl);
-  }, [avatarUrl]);
-
-  const handleAvatarFile = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 3 * 1024 * 1024) {
-      notify(locale === 'ar' ? 'حجم الصورة كبير جداً (الحد الأقصى 3 ميجابايت)' : 'Image too large (Max 3MB)');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const base64 = event.target?.result as string;
-      if (base64) {
-        setAvatarPreview(base64);
-        await updateProfile({ avatarUrl: base64 });
-        notify(locale === 'ar' ? 'تم تحديث الصورة الشخصية بنجاح' : 'Profile picture updated successfully');
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleRemoveAvatar = async () => {
-    setAvatarPreview('/default-avatar.jpg');
-    await updateProfile({ avatarUrl: '' });
-    notify(locale === 'ar' ? 'تم استعادة الصورة الرمزية الافتراضية' : 'Default avatar restored');
-  };
-
-  const handleCopyId = () => {
-    navigator.clipboard.writeText(userId);
-    setCopiedId(true);
-    notify(locale === 'ar' ? 'تم نسخ معرف الحساب' : 'UUID copied to clipboard');
-    setTimeout(() => setCopiedId(false), 2000);
-  };
 
   const handleBrowseWorkspace = async () => {
     setIsBrowsingWorkspace(true);
@@ -116,6 +82,41 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
       }
     } finally {
       setIsBrowsingWorkspace(false);
+    }
+  };
+
+  const handleAddCustomIde = () => {
+    if (!newIdeName.trim() || !newIdeCommand.trim()) return;
+    const id = newIdeName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const created = {
+      id,
+      name: newIdeName.trim(),
+      command: newIdeCommand.trim(),
+    };
+    setCustomIdes([...customIdes, created]);
+    setNewIdeName('');
+    setNewIdeCommand('');
+    setShowAddIde(false);
+    notify(locale === 'ar' ? `تمت إضافة المحرر: ${created.name}` : `Added custom IDE: ${created.name}`);
+  };
+
+  const handleRemoveCustomIde = (id: string) => {
+    setCustomIdes(customIdes.filter((item) => item.id !== id));
+    if (defaultIde === id) {
+      setDefaultIde('antigravity');
+    }
+    notify(locale === 'ar' ? 'تم حذف المحرر المخصص' : 'Custom IDE removed');
+  };
+
+  const handleOpenBackupDir = async () => {
+    try {
+      await fetch('/api/projects/backup/open-folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ backup_dir: backupDir }),
+      });
+    } catch {
+      // silent
     }
   };
 
@@ -143,56 +144,116 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
     }
   };
 
-  // Profile Save (Persisted to Database & Cloud)
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputName.trim()) return;
-    setSavingProfile(true);
-    const ok = await updateProfile({
-      displayName: inputName.trim(),
-      role: inputRole.trim(),
-      bio: inputBio.trim(),
-    });
-    setSavingProfile(false);
-    if (ok) {
-      notify(t('settings.account.profileUpdated'));
-    }
-  };
 
-  // Password Change (Zero native browser alerts)
-  const handleUpdatePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPass) return;
-    if (newPass.length < 6) {
-      notify(t('settings.account.passwordMinLength'));
-      return;
-    }
-    if (newPass !== confirmPass) {
-      notify(t('settings.account.passwordMismatch'));
-      return;
-    }
-    setUpdatingPass(true);
+  // Backup Snapshot Management
+  const fetchDiskBackups = useCallback(async (dir?: string) => {
+    const target = dir || backupDir;
+    if (!target) return;
+    setLoadingBackups(true);
     try {
-      await updatePassword(newPass);
-      setNewPass('');
-      setConfirmPass('');
-      notify(t('settings.account.passwordChanged'));
-    } catch (err: any) {
-      notify(err?.message || 'Failed to update password');
+      const res = await fetch(`/api/system/backup/list?dir=${encodeURIComponent(target)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok && Array.isArray(data.backups)) {
+          setDiskBackups(data.backups);
+        }
+      }
+    } catch {
+      // silent
     } finally {
-      setUpdatingPass(false);
+      setLoadingBackups(false);
+    }
+  }, [backupDir]);
+
+  useEffect(() => {
+    if (activeTab === 'data') {
+      fetchDiskBackups();
+    }
+  }, [activeTab, fetchDiskBackups]);
+
+  const handleBrowseBackupDir = async () => {
+    setIsBrowsingBackupDir(true);
+    try {
+      const selected = await pickDirectory();
+      if (selected) {
+        setBackupDir(selected);
+        fetchDiskBackups(selected);
+        notify(locale === 'ar' ? `مجلد النسخ الاحتياطية: ${selected}` : `Backup directory set: ${selected}`);
+      }
+    } finally {
+      setIsBrowsingBackupDir(false);
     }
   };
 
-  // Cloud Sync
-  const handleSyncCloud = async () => {
-    setSyncingNow(true);
-    const ok = await syncAllToCloud();
-    setSyncingNow(false);
-    if (ok) {
-      notify(t('settings.account.syncSuccess'));
-    } else {
-      notify(locale === 'ar' ? 'تم حفظ البيانات محلياً' : 'Data stored locally');
+  const handleCreateDiskBackup = async () => {
+    setCreatingBackup(true);
+    try {
+      const dump: Record<string, any> = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k) {
+          try {
+            dump[k] = JSON.parse(localStorage.getItem(k) || 'null');
+          } catch {
+            dump[k] = localStorage.getItem(k);
+          }
+        }
+      }
+
+      const res = await fetch('/api/system/backup/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ backup_dir: backupDir, data: dump }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok) {
+          notify(locale === 'ar' ? `تم حفظ النسخة الاحتياطية: ${data.filename}` : `Backup saved: ${data.filename}`);
+          fetchDiskBackups();
+        } else {
+          notify(data.error || 'Failed to save backup');
+        }
+      }
+    } catch {
+      notify('Backup creation failed');
+    } finally {
+      setCreatingBackup(false);
+    }
+  };
+
+  const handleRestoreDiskBackup = async (filePath: string) => {
+    const ok = await confirmDialog({
+      title: locale === 'ar' ? 'تأكيد استعادة النسخة الاحتياطية' : 'Confirm Backup Restoration',
+      message: t('settings.data.confirmRestore'),
+      confirmText: locale === 'ar' ? 'نعم، استعادة الآن' : 'Restore Now',
+      cancelText: locale === 'ar' ? 'إلغاء' : 'Cancel',
+      isDanger: true,
+    });
+
+    if (!ok) return;
+
+    try {
+      const res = await fetch('/api/system/backup/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file_path: filePath }),
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        if (result.ok && result.data) {
+          const payload = result.data;
+          Object.keys(payload).forEach((k) => {
+            const v = payload[k];
+            localStorage.setItem(k, typeof v === 'string' ? JSON.stringify(v) : JSON.stringify(v));
+          });
+          notify(t('settings.data.restoredSuccess'));
+          setTimeout(() => window.location.reload(), 800);
+        }
+      }
+    } catch {
+      notify('Restoration failed');
     }
   };
 
@@ -205,7 +266,7 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
         .map((k) => [k, localStorage.getItem(k)])
     );
     const blob = new Blob(
-      [JSON.stringify({ exportedAt: new Date().toISOString(), version: '0.2.31', userId, data }, null, 2)],
+      [JSON.stringify({ exportedAt: new Date().toISOString(), version: '0.3.12', userId, data }, null, 2)],
       { type: 'application/json' }
     );
     const url = URL.createObjectURL(blob);
@@ -278,242 +339,7 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
   ] as const;
 
   const content: Record<typeof tabs[number]['id'], React.ReactNode> = {
-    account: (
-      <div className="settings-form">
-        <div className="settings-section-heading">
-          <span className="settings-icon"><UserIcon size={16} /></span>
-          <div>
-            <h2>{t('settings.account.title')}</h2>
-            <p>{t('settings.account.desc')}</p>
-          </div>
-        </div>
-
-        {/* Profile Card & Details */}
-        <div className="account-details-panel panel-subtle">
-          <div className="account-profile-header flex items-center gap-5">
-            <div className="account-big-avatar-wrapper">
-              <div
-                className="account-big-avatar-circle"
-                onClick={() => avatarInputRef.current?.click()}
-                title={locale === 'ar' ? 'انقر لتغيير الصورة الشخصية' : 'Click to change profile picture'}
-              >
-                {avatarPreview ? (
-                  <img src={avatarPreview} alt={displayName} />
-                ) : (
-                  <img src="/default-avatar.jpg" alt={displayName} />
-                )}
-                <div className="account-big-avatar-overlay">
-                  <Camera size={22} />
-                </div>
-              </div>
-              <span className="account-online" style={{ width: 12, height: 12, bottom: 2, insetInlineEnd: 2 }} />
-            </div>
-
-            <div className="account-profile-text flex-1">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="account-profile-name">{displayName}</span>
-                <span className="account-role-pill mono">{role}</span>
-                <span className="account-profile-badge mono ml-auto">
-                  <ShieldCheck size={14} className="text-emerald-400" />
-                  {t('settings.account.connected')}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-3 mt-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => avatarInputRef.current?.click()}
-                  className="btn btn-outline text-xs h-7 px-3 gap-1.5 focus-ring"
-                >
-                  <Camera size={13} />
-                  <span>{locale === 'ar' ? 'تغيير الصورة' : 'Change Photo'}</span>
-                </button>
-                {avatarPreview && avatarPreview !== '/default-avatar.jpg' && (
-                  <button
-                    type="button"
-                    onClick={handleRemoveAvatar}
-                    className="btn btn-ghost text-xs h-7 px-2.5 text-muted-foreground hover:text-destructive gap-1 focus-ring"
-                  >
-                    <Trash2 size={12} />
-                    <span>{locale === 'ar' ? 'استعادة الافتراضي' : 'Reset to Default'}</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={handleAvatarFile}
-            />
-          </div>
-
-          <form className="account-edit-form" onSubmit={handleSaveProfile}>
-            {/* Locked Email */}
-            <div className="form-group">
-              <label htmlFor="settings-email-locked">
-                <span>{t('settings.account.emailLabel')}</span>
-              </label>
-              <div className="locked-input-wrapper">
-                <input
-                  id="settings-email-locked"
-                  type="email"
-                  value={email}
-                  disabled
-                  readOnly
-                  className="locked-input mono"
-                />
-                <Lock size={15} className="locked-icon" />
-              </div>
-              <small className="field-hint text-muted-foreground">{t('settings.account.emailHint')}</small>
-            </div>
-
-            {/* Editable Display Name & Role in a 2-column grid */}
-            <div className="form-row-2">
-              <div className="form-group">
-                <label htmlFor="settings-display-name">
-                  <span>{t('settings.account.displayName')}</span>
-                </label>
-                <input
-                  id="settings-display-name"
-                  type="text"
-                  value={inputName}
-                  onChange={(e) => setInputName(e.target.value)}
-                  placeholder="Your Name"
-                  maxLength={40}
-                  className="editable-input"
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="settings-role">
-                  <span>{t('settings.account.role')}</span>
-                </label>
-                <input
-                  id="settings-role"
-                  type="text"
-                  value={inputRole}
-                  onChange={(e) => setInputRole(e.target.value)}
-                  placeholder="e.g. Lead Engineer, Student"
-                  maxLength={50}
-                  className="editable-input"
-                />
-              </div>
-            </div>
-
-            {/* Editable Bio */}
-            <div className="form-group">
-              <label htmlFor="settings-bio">
-                <span>{t('settings.account.bio')}</span>
-              </label>
-              <textarea
-                id="settings-bio"
-                rows={2}
-                value={inputBio}
-                onChange={(e) => setInputBio(e.target.value)}
-                placeholder="A brief bio..."
-                maxLength={200}
-                className="editable-textarea"
-              />
-            </div>
-
-            <div className="form-actions-inline">
-              <button
-                type="submit"
-                className="btn btn-primary focus-ring"
-                disabled={savingProfile || !inputName.trim()}
-              >
-                <Save size={14} />
-                {savingProfile ? (locale === 'ar' ? 'جارٍ الحفظ في الداتا بيس...' : 'Saving to Database...') : t('settings.account.saveProfile')}
-              </button>
-            </div>
-          </form>
-
-          {/* Security & Password Section */}
-          <div className="security-sub-panel panel-subtle">
-            <div className="sub-panel-head">
-              <KeyRound size={15} className="text-cyan" />
-              <b>{t('settings.account.securitySection')}</b>
-            </div>
-            <form className="password-change-form" onSubmit={handleUpdatePassword}>
-              <div className="form-row-2">
-                <div className="password-input-wrapper">
-                  <input
-                    type={showNewPass ? 'text' : 'password'}
-                    placeholder={t('settings.account.newPassword')}
-                    value={newPass}
-                    onChange={(e) => setNewPass(e.target.value)}
-                    minLength={6}
-                    className="editable-input"
-                  />
-                  <button
-                    type="button"
-                    className="password-toggle-eye"
-                    onClick={() => setShowNewPass(!showNewPass)}
-                    title={showNewPass ? 'Hide password' : 'Show password'}
-                  >
-                    {showNewPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </div>
-                <div className="password-input-wrapper">
-                  <input
-                    type={showConfirmPass ? 'text' : 'password'}
-                    placeholder={t('settings.account.confirmPassword')}
-                    value={confirmPass}
-                    onChange={(e) => setConfirmPass(e.target.value)}
-                    minLength={6}
-                    className="editable-input"
-                  />
-                  <button
-                    type="button"
-                    className="password-toggle-eye"
-                    onClick={() => setShowConfirmPass(!showConfirmPass)}
-                    title={showConfirmPass ? 'Hide password' : 'Show password'}
-                  >
-                    {showConfirmPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </div>
-              </div>
-              <button
-                type="submit"
-                className="btn btn-outline focus-ring"
-                disabled={updatingPass || !newPass || !confirmPass}
-              >
-                <Lock size={13} />
-                {updatingPass ? (locale === 'ar' ? 'جارٍ التحديث...' : 'Updating...') : t('settings.account.updatePassword')}
-              </button>
-            </form>
-          </div>
-
-          <div className="cloud-details-grid">
-            <div>
-              <small>{t('settings.account.accountInfo')}</small>
-              <b className="mono text-xs truncate max-w-[200px] block" title={userId}>
-                {userId}
-              </b>
-            </div>
-            <div>
-              <small>{t('settings.account.status')}</small>
-              <b className="mono text-xs text-emerald-400 flex items-center gap-1">
-                <span className="pulse-dot-green" /> {lastSynced ? `${t('common.online')} (${lastSynced})` : t('common.online')}
-              </b>
-            </div>
-          </div>
-        </div>
-
-        <div className="settings-actions">
-          <button className="btn btn-accent focus-ring" disabled={syncingNow} onClick={handleSyncCloud}>
-            <RefreshCw className={syncingNow ? "spin" : ""} size={14} />
-            {syncingNow ? (locale === 'ar' ? 'جاري المزامنة...' : 'Syncing...') : t('settings.account.syncCloud')}
-          </button>
-          <button className="btn btn-ghost text-destructive focus-ring" onClick={() => signOut()}>
-            <LogOut size={14} />
-            {t('settings.account.signOut')}
-          </button>
-        </div>
-      </div>
-    ),
+    account: <AccountSettingsTab notify={notify} />,
 
     desktop: (
       <div className="settings-form">
@@ -679,21 +505,234 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
                 <span>{isBrowsingWorkspace ? (locale === 'ar' ? 'جارٍ الفتح...' : 'Opening...') : (locale === 'ar' ? 'استعراض...' : 'Browse...')}</span>
               </button>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] text-muted-foreground">{locale === 'ar' ? 'مسارات سريعة مقترحة:' : 'Quick suggestions:'}</span>
-              {['C:\\Projects', 'D:\\Projects', 'C:\\dev26-27\\app'].map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => {
-                    setWorkspacePath(p);
-                    notify(locale === 'ar' ? `تم تحديد مسار المشاريع: ${p}` : `Workspace path set to: ${p}`);
+          </div>
+        </div>
+
+        {/* 5. Development & Projects Vault Engine */}
+        <div className="desktop-settings-group">
+          <div className="group-header">
+            <Code2 size={16} className="text-cyan" />
+            <div>
+              <b>{t('settings.desktop.devSection')}</b>
+              <small className="block text-muted-foreground">{t('settings.desktop.devSectionDesc')}</small>
+            </div>
+          </div>
+          
+          {/* Preferred IDE: Single Sleek Box / Dropdown */}
+          <div className="panel-subtle p-4 rounded-xl border border-border flex flex-col gap-3">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-cyan shrink-0">
+                  <Code2 size={18} />
+                </div>
+                <div>
+                  <b className="text-xs font-semibold block">{t('settings.desktop.defaultIdeTitle')}</b>
+                  <p className="text-[11px] text-muted-foreground">{t('settings.desktop.defaultIdeDesc')}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <select
+                  value={defaultIde}
+                  onChange={(e) => {
+                    setDefaultIde(e.target.value);
+                    notify(locale === 'ar' ? `المحرر المختار: ${e.target.value}` : `Selected IDE: ${e.target.value}`);
                   }}
-                  className="px-2 py-0.5 rounded text-[11px] mono border border-border bg-card hover:border-cyan text-foreground transition-all cursor-pointer"
+                  className="bg-card border border-border rounded-lg px-3 py-2 text-xs font-mono text-foreground focus-ring cursor-pointer hover:border-cyan transition-all min-w-[200px]"
                 >
-                  {p}
+                  {customIdes.map((item) => (
+                    <option key={item.id} value={item.id} className="bg-black text-white">
+                      💻 {item.name} ({item.command})
+                    </option>
+                  ))}
+                  <option value="explorer" className="bg-black text-white">📁 Windows Explorer</option>
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAddIde(!showAddIde)}
+                  className="btn btn-outline text-xs h-[36px] px-3 font-mono"
+                >
+                  {showAddIde ? (locale === 'ar' ? 'إغلاق' : 'Close') : (locale === 'ar' ? '+ محرر مخصص' : '+ Custom IDE')}
                 </button>
-              ))}
+              </div>
+            </div>
+
+            {/* Custom IDE Commands Expansion Panel */}
+            {showAddIde && (
+              <div className="mt-3 p-4 rounded-lg bg-black/60 border border-zinc-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white flex items-center gap-2">
+                    <Terminal size={14} className="text-cyan" />
+                    <span>{locale === 'ar' ? 'أوامر تشغيل المحررات المخصصة' : 'Configure Custom IDE Commands'}</span>
+                  </span>
+                  <span className="text-[11px] text-zinc-500 font-mono">
+                    {locale === 'ar' ? 'مثال: cursor . أو code -n .' : 'e.g. cursor . or code -n .'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                  <input
+                    type="text"
+                    value={newIdeName}
+                    onChange={(e) => setNewIdeName(e.target.value)}
+                    placeholder={locale === 'ar' ? 'اسم المحرر (مثال: Zed Editor)' : 'IDE Name (e.g. Zed Editor)'}
+                    className="sm:col-span-5 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-cyan-500 focus:outline-none"
+                  />
+                  <input
+                    type="text"
+                    value={newIdeCommand}
+                    onChange={(e) => setNewIdeCommand(e.target.value)}
+                    placeholder={locale === 'ar' ? 'الأمر التنفيذي (مثال: zed .)' : 'Shell Command (e.g. zed .)'}
+                    className="sm:col-span-5 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs font-mono text-cyan-400 placeholder-zinc-500 focus:border-cyan-500 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomIde}
+                    disabled={!newIdeName.trim() || !newIdeCommand.trim()}
+                    className="sm:col-span-2 btn bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-xs py-2 px-3 rounded-lg transition disabled:opacity-50"
+                  >
+                    {locale === 'ar' ? 'إضافة' : 'Add'}
+                  </button>
+                </div>
+
+                {/* List of current configured IDE commands */}
+                <div className="space-y-1.5 pt-2 border-t border-zinc-900">
+                  {customIdes.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-2 rounded bg-zinc-900/50 border border-zinc-800/80 text-xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-white">{item.name}</span>
+                        <code className="text-[11px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+                          {item.command}
+                        </code>
+                      </div>
+
+                      {item.id !== 'antigravity' && item.id !== 'code' && item.id !== 'cursor' && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCustomIde(item.id)}
+                          className="text-zinc-500 hover:text-rose-400 text-xs transition"
+                        >
+                          {locale === 'ar' ? 'حذف' : 'Delete'}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Dev Toggles */}
+          <div className="desktop-toggle-list">
+            <div className="desktop-toggle-row panel-subtle">
+              <div className="desktop-toggle-info">
+                <div className="desktop-toggle-title">
+                  <RefreshCw size={15} className="text-cyan" />
+                  <b>{t('settings.desktop.autoScanTitle')}</b>
+                </div>
+                <p>{t('settings.desktop.autoScanDesc')}</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoScanProjects}
+                className={`toggle ${autoScanProjects ? 'toggle-on' : ''}`}
+                onClick={() => setAutoScanProjects(!autoScanProjects)}
+              >
+                <span className="toggle-thumb" />
+              </button>
+            </div>
+
+            <div className="desktop-toggle-row panel-subtle">
+              <div className="desktop-toggle-info">
+                <div className="desktop-toggle-title">
+                  <Trash2 size={15} className="text-cyan" />
+                  <b>{t('settings.desktop.confirmCleanTitle')}</b>
+                </div>
+                <p>{t('settings.desktop.confirmCleanDesc')}</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={confirmCleanCache}
+                className={`toggle ${confirmCleanCache ? 'toggle-on' : ''}`}
+                onClick={() => setConfirmCleanCache(!confirmCleanCache)}
+              >
+                <span className="toggle-thumb" />
+              </button>
+            </div>
+          </div>
+
+          {/* Study Hub AI Settings */}
+          <div className="panel-subtle p-4 rounded-xl border border-border flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-purple-400 shrink-0">
+                <BrainCircuit size={18} />
+              </div>
+              <div>
+                <b className="text-xs font-semibold block">{t('settings.desktop.studyAiTitle')}</b>
+                <p className="text-[11px] text-muted-foreground">{t('settings.desktop.studyAiDesc')}</p>
+              </div>
+            </div>
+
+            <div className="relative min-w-[200px]">
+              <select
+                value={studyAiModel}
+                onChange={(e) => {
+                  setStudyAiModel(e.target.value as any);
+                  notify(locale === 'ar' ? `نموذج دراسة الذكاء الاصطناعي: ${e.target.value}` : `Study AI model: ${e.target.value}`);
+                }}
+                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs font-mono text-foreground focus-ring cursor-pointer hover:border-cyan transition-all"
+              >
+                <option value="auto" className="bg-black text-white">{t('settings.desktop.studyAiAuto')}</option>
+                <option value="gemini-lite" className="bg-black text-white">{t('settings.desktop.studyAiGeminiLite')}</option>
+                <option value="gemini-pro" className="bg-black text-white">{t('settings.desktop.studyAiGeminiPro')}</option>
+                <option value="deepseek" className="bg-black text-white">{t('settings.desktop.studyAiDeepSeek')}</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="desktop-toggle-list">
+            <div className="desktop-toggle-row panel-subtle">
+              <div className="desktop-toggle-info">
+                <div className="desktop-toggle-title">
+                  <Zap size={15} className="text-cyan" />
+                  <b>{t('settings.desktop.studyAutoQuiz')}</b>
+                </div>
+                <p>{t('settings.desktop.studyAutoQuizDesc')}</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoGenerateQuiz}
+                className={`toggle ${autoGenerateQuiz ? 'toggle-on' : ''}`}
+                onClick={() => setAutoGenerateQuiz(!autoGenerateQuiz)}
+              >
+                <span className="toggle-thumb" />
+              </button>
+            </div>
+
+            <div className="desktop-toggle-row panel-subtle">
+              <div className="desktop-toggle-info">
+                <div className="desktop-toggle-title">
+                  <Layers size={15} className="text-cyan" />
+                  <b>{t('settings.desktop.studyAutoFlashcards')}</b>
+                </div>
+                <p>{t('settings.desktop.studyAutoFlashcardsDesc')}</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoGenerateFlashcards}
+                className={`toggle ${autoGenerateFlashcards ? 'toggle-on' : ''}`}
+                onClick={() => setAutoGenerateFlashcards(!autoGenerateFlashcards)}
+              >
+                <span className="toggle-thumb" />
+              </button>
             </div>
           </div>
         </div>
@@ -822,10 +861,106 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
           </div>
         </div>
 
-        <div className="settings-actions">
-          <button className="btn btn-accent focus-ring" onClick={exportBackup}>
+        {/* 1. Backup Destination Folder */}
+        <div className="panel-subtle p-4 rounded-xl border border-border flex flex-col gap-3">
+          <div>
+            <b className="text-xs font-semibold block">{t('settings.data.backupDirTitle')}</b>
+            <p className="text-[11px] text-muted-foreground">{t('settings.data.backupDirDesc')}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Folder size={16} className="text-cyan shrink-0" />
+            <input
+              type="text"
+              value={backupDir}
+              onChange={(e) => setBackupDir(e.target.value)}
+              placeholder="e.g. D:\CortexOS_Backups"
+              className="editable-input flex-1 mono text-xs"
+            />
+            <button
+              type="button"
+              onClick={handleBrowseBackupDir}
+              disabled={isBrowsingBackupDir}
+              className="btn btn-primary text-xs h-[42px] px-3 gap-1.5 shrink-0 focus-ring"
+            >
+              <FolderSearch size={15} />
+              <span>{isBrowsingBackupDir ? '...' : (locale === 'ar' ? 'تصفح...' : 'Browse...')}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleOpenBackupDir}
+              className="btn btn-outline text-xs h-[42px] px-3 gap-1.5 shrink-0 focus-ring"
+              title={locale === 'ar' ? 'فتح المجلد في Explorer' : 'Open in Explorer'}
+            >
+              <Folder size={15} />
+              <span>{locale === 'ar' ? 'فتح' : 'Open'}</span>
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-border/50">
+            <button
+              type="button"
+              onClick={handleCreateDiskBackup}
+              disabled={creatingBackup}
+              className="btn btn-accent text-xs h-9 px-4 gap-2 focus-ring"
+            >
+              <HardDrive size={14} className={creatingBackup ? 'spin' : ''} />
+              <span>{creatingBackup ? t('settings.data.creatingBackup') : t('settings.data.createBackup')}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => fetchDiskBackups()}
+              disabled={loadingBackups}
+              className="btn btn-ghost text-xs h-8 px-2 gap-1 text-muted-foreground hover:text-foreground"
+            >
+              <RefreshCw size={12} className={loadingBackups ? 'spin' : ''} />
+              <span>{locale === 'ar' ? 'تحديث' : 'Refresh'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 2. Available Snapshots on Disk */}
+        <div className="panel-subtle p-4 rounded-xl border border-border flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <b className="text-xs font-semibold">{t('settings.data.availableBackups')}</b>
+            <span className="mono text-[11px] text-muted-foreground">{diskBackups.length} snapshots</span>
+          </div>
+
+          {diskBackups.length > 0 ? (
+            <div className="flex flex-col gap-2 max-h-[220px] overflow-y-auto pr-1">
+              {diskBackups.map((b) => (
+                <div
+                  key={b.filename}
+                  className="p-3 rounded-lg border border-border bg-card/60 flex items-center justify-between gap-3 text-xs hover:border-zinc-700 transition-all"
+                >
+                  <div className="flex flex-col min-w-0">
+                    <b className="mono text-[11px] truncate text-foreground">{b.filename}</b>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {b.timestamp_formatted} · {b.size_kb} KB
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRestoreDiskBackup(b.file_path)}
+                    className="btn btn-outline text-xs h-7 px-3 gap-1 shrink-0 hover:border-cyan hover:text-cyan focus-ring"
+                  >
+                    <RefreshCw size={11} />
+                    <span>{t('settings.data.restoreSnapshot')}</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground py-2">{t('settings.data.noBackupsFound')}</p>
+          )}
+        </div>
+
+        {/* 3. Manual Import & Cloud Export */}
+        <div className="flex items-center justify-between gap-2 pt-2">
+          <button className="btn btn-outline text-xs h-9 px-4 gap-2 focus-ring" onClick={exportBackup}>
             <HardDrive size={14} />
-            {t('settings.data.exportBackup')}
+            <span>{t('settings.data.exportBackup')}</span>
           </button>
         </div>
 
@@ -843,7 +978,7 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
         </div>
 
         <div className="settings-actions">
-          <button className="btn btn-ghost text-destructive focus-ring" onClick={clearCache}>
+          <button className="btn btn-ghost text-destructive focus-ring text-xs" onClick={clearCache}>
             {t('settings.data.clearCache')}
           </button>
         </div>
@@ -930,7 +1065,7 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
           <div className="about-grid">
             <div className="about-item">
               <small>{t('settings.about.versionLabel')}</small>
-              <b className="mono">0.2.31</b>
+              <b className="mono">0.3.12</b>
             </div>
             <div className="about-item">
               <small>{t('settings.about.channel')}</small>

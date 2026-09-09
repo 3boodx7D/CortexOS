@@ -1,9 +1,9 @@
-import { type ReactNode, useState, useEffect } from 'react';
+import { type ReactNode, useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'wouter';
 import {
-  BookOpen, BrainCircuit, CalendarClock, Check, ChevronRight, Command,
+  Crown, BookOpen, BrainCircuit, CalendarClock, Check, ChevronRight, Command,
   FolderKanban, Gamepad2, Headphones, LayoutDashboard, LogOut, Menu,
-  Search, Settings2, Trash2, X, Cpu
+  Search, Settings2, Trash2, X, Cpu, Users, UserPlus
 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { signOut } from '@/lib/supabase';
@@ -13,26 +13,50 @@ import { WindowControls } from '@/components/window-controls';
 const navItems = [
   { href: '/overview', labelKey: 'nav.overview', icon: LayoutDashboard },
   { href: '/projects', labelKey: 'nav.projects', icon: FolderKanban },
+  { href: '/team', labelKey: 'nav.team', icon: Users },
+  { href: '/friends', labelKey: 'nav.friends', icon: UserPlus },
   { href: '/study', labelKey: 'nav.study', icon: BookOpen },
-  { href: '/games', labelKey: 'nav.games', icon: Gamepad2 },
-  { href: '/media', labelKey: 'nav.media', icon: Headphones },
-  { href: '/my-pc', labelKey: 'nav.myPc', icon: Cpu },
   { href: '/deadlines', labelKey: 'nav.deadlines', icon: CalendarClock },
+  { href: '/my-pc', labelKey: 'nav.myPc', icon: Cpu },
   { href: '/settings', labelKey: 'nav.settings', icon: Settings2 },
+  { href: '/media', labelKey: 'nav.media', icon: Headphones },
+  { href: '/games', labelKey: 'nav.games', icon: Gamepad2 },
 ];
 
 const navGroups = [
-  { labelKey: 'nav.workspace', items: [navItems[0], navItems[1]] },
-  { labelKey: 'nav.academic', items: [navItems[2], navItems[6]] },
-  { labelKey: 'nav.utilities', items: [navItems[3], navItems[4], navItems[5], navItems[7]] },
+  { labelKey: 'nav.workspace', items: [navItems[0], navItems[1], navItems[2], navItems[3]] },
+  { labelKey: 'nav.academic', items: [navItems[4], navItems[5]] },
+  { labelKey: 'nav.system', items: [navItems[6], navItems[7]] },
+  { labelKey: 'nav.lounge', items: [navItems[8], navItems[9]] },
 ];
 
 export function AppShell({ children, toast }: { children: ReactNode; toast: string }) {
   const { t, locale } = useTranslation();
-  const { displayName, email, avatarChar, avatarUrl } = useUserContext();
-  const [location] = useLocation();
+  const { displayName, email, avatarChar, avatarUrl, isOwner } = useUserContext();
+  const [location, setLocation] = useLocation();
   const [mobileNav, setMobileNav] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Internal auto-hiding scrollbar: only shows when scrolling down
+  const [isScrolling, setIsScrolling] = useState(false);
+  const scrollTimeoutRef = useRef<number | null>(null);
+  const scrollViewportRef = useRef<HTMLDivElement | null>(null);
+
+  // Reset scroll to top smoothly when navigating between pages
+  useEffect(() => {
+    scrollViewportRef.current?.scrollTo({ top: 0, behavior: 'instant' });
+  }, [location]);
+
+  // Detect scroll interaction: display sleek scrollbar during scroll, auto-hide after 1.1s
+  const handleScroll = () => {
+    setIsScrolling(true);
+    if (scrollTimeoutRef.current) {
+      window.clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = window.setTimeout(() => {
+      setIsScrolling(false);
+    }, 1100);
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -83,17 +107,38 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
 
         <Link href="/settings" className="account-card" title={t('nav.settings')}>
           <div className="account-avatar-wrapper">
-            <div className="account-avatar">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt={displayName} className="account-avatar-img" />
-              ) : (
-                avatarChar
-              )}
+            <div className="account-avatar overflow-hidden">
+              <img
+                src={avatarUrl || '/default-avatar.jpg'}
+                alt={displayName}
+                className="account-avatar-img w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = '/default-avatar.jpg';
+                }}
+              />
             </div>
             <span className="account-online" />
           </div>
           <div className="account-copy" title={email}>
-            <b>{displayName}</b>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <b className="truncate">{displayName}</b>
+              {isOwner && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setLocation('/owner');
+                    setMobileNav(false);
+                  }}
+                  className="inline-flex items-center justify-center p-0.5 rounded text-amber-400 hover:text-amber-300 hover:bg-amber-500/20 transition-all shrink-0 cursor-pointer"
+                  title={locale === 'ar' ? 'مركز تحكم المالك' : 'Owner Cockpit'}
+                  aria-label="Owner Cockpit"
+                >
+                  <Crown size={13} className="fill-amber-400/25" />
+                </button>
+              )}
+            </div>
             <small className="mono truncate max-w-[130px] block">{email}</small>
           </div>
           <button
@@ -121,7 +166,7 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
           </button>
           <div className="crumb mono" data-tauri-drag-region>
             <span className="crumb-signal" />
-            CORTEX / {location === '/' ? 'OVERVIEW' : location.slice(1).toUpperCase()}
+            CORTEX / {location === '/' ? 'OVERVIEW' : location.startsWith('/project/') ? 'PROJECT HUB' : location === '/friends' ? 'FRIENDS HUB' : location === '/team' ? 'TEAM HUB' : location.slice(1).toUpperCase()}
           </div>
           
           <div data-tauri-drag-region style={{ flex: 1, height: '100%', minWidth: '20px' }} />
@@ -136,12 +181,19 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
           <WindowControls />
         </header>
 
-        <div className="page-wrap page-in" key={location}>{children}</div>
+        <div
+          className={`main-scroll-viewport ${isScrolling ? 'is-scrolling' : ''}`}
+          onScroll={handleScroll}
+          ref={scrollViewportRef}
+          data-testid="main-scroll-viewport"
+        >
+          <div className="page-wrap page-in" key={location}>{children}</div>
+        </div>
       </main>
 
       {/* Simple, tiny version label in bottom right corner: no box, no light */}
       <div className="bottom-corner-version mono" data-testid="text-corner-version">
-        {locale === 'ar' ? 'اصدار تجريبي 0.2.31' : 'Beta 0.2.31'}
+        {locale === 'ar' ? 'اصدار تجريبي 0.3.12' : 'Beta 0.3.12'}
       </div>
 
       {searchOpen && (

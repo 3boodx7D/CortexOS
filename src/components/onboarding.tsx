@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Moon, Sun, Zap, Globe, ChevronRight, CheckCircle2, Monitor, FolderKanban, Sparkles, Folder, FolderSearch } from 'lucide-react';
 import { useTranslation, type Locale } from '@/lib/i18n';
 import { WindowControls } from '@/components/window-controls';
@@ -24,8 +24,15 @@ export function Onboarding({
   const [step, setStep] = useState(0);
   const [isBrowsing, setIsBrowsing] = useState(false);
   const [workspacePath, setWorkspacePath] = useState(() => {
-    return localStorage.getItem('cortex-workspace-path') || 'C:\\Projects';
+    return localStorage.getItem('cortex-workspace-path') || 'D:\\all2026.2007';
   });
+
+  // Ensure default IDE is always set for new users
+  useEffect(() => {
+    if (!localStorage.getItem('cortex-default-ide')) {
+      localStorage.setItem('cortex-default-ide', 'cursor');
+    }
+  }, []);
 
   const totalSteps = 5;
 
@@ -208,7 +215,7 @@ export function Onboarding({
                   <span style={{ fontSize: '11px', color: 'hsl(var(--muted-foreground))' }}>
                     {isRtl ? 'مسارات سريعة مقترحة:' : 'Quick suggestions:'}
                   </span>
-                  {['C:\\Projects', 'D:\\Projects', 'C:\\dev26-27\\app'].map((p) => (
+                  {['D:\\all2026.2007', 'D:\\dev26-27', 'C:\\Projects', 'D:\\Projects'].map((p) => (
                     <button
                       key={p}
                       type="button"

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "CortexOS",
-  "version": "0.2.31",
+  "version": "0.3.12",
   "identifier": "com.tauri.dev",
   "build": {
     "frontendDist": "../dist",
