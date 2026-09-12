@@ -1,12 +1,10 @@
-'use client';
-
-import { useTheme } from 'next-themes';
 import { Toaster as Sonner } from 'sonner';
+import { usePersistent } from '@/hooks/use-persistent';
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = 'system' } = useTheme();
+  const [theme] = usePersistent<'dark' | 'light'>('cortex-theme', 'dark');
 
   return (
     <Sonner

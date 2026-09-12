@@ -258,28 +258,32 @@ function SetNewPasswordScreen({
           <span>CORTEXOS</span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+        <div className="auth-header-actions" data-tauri-drag-region="false">
           <button
             type="button"
             onClick={onToggleTheme}
-            className="auth-control-btn"
+            className="auth-header-btn auth-header-btn-icon"
             title={theme === 'dark' ? 'Switch to Light theme' : 'التبديل إلى الوضع الداكن'}
             aria-label="Toggle theme"
-            style={{ width: '32px', height: '28px' }}
+            data-testid="button-auth-toggle-theme"
+            data-tauri-drag-region="false"
           >
-            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
           </button>
 
           <button
             type="button"
             onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
-            className="auth-control-btn mono font-bold"
+            className="auth-header-btn mono"
             title="Switch Language / تغيير اللغة"
             aria-label="Toggle language"
-            style={{ width: '40px', height: '28px', fontSize: '11px' }}
+            data-testid="button-auth-toggle-lang"
+            data-tauri-drag-region="false"
           >
             {locale === 'ar' ? 'EN' : 'عربي'}
           </button>
+
+          <div className="auth-header-divider" />
 
           <WindowControls />
         </div>
@@ -397,9 +401,9 @@ function SetNewPasswordScreen({
           )}
 
           {error && (
-            <div className="auth-error">
-              <ShieldCheck size={16} className="shrink-0" />
-              <span>{error}</span>
+            <div className="auth-error" role="alert">
+              <AlertCircle size={15} className="shrink-0 text-red-400 mt-0.5" />
+              <span className="flex-1 text-[12.5px] leading-relaxed">{error}</span>
             </div>
           )}
 
@@ -678,32 +682,34 @@ function LoginScreen({
           <span>CORTEXOS</span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+        <div className="auth-header-actions" data-tauri-drag-region="false">
           {/* Theme Switcher */}
           <button
             type="button"
             onClick={onToggleTheme}
-            className="auth-control-btn"
+            className="auth-header-btn auth-header-btn-icon"
             title={theme === 'dark' ? 'Switch to Light theme' : 'التبديل إلى الوضع الداكن'}
             aria-label="Toggle theme"
             data-testid="button-auth-toggle-theme"
-            style={{ width: '32px', height: '28px' }}
+            data-tauri-drag-region="false"
           >
-            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
           </button>
 
           {/* Seamless In-Place Language Switcher (No reload) */}
           <button
             type="button"
             onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
-            className="auth-control-btn mono font-bold"
+            className="auth-header-btn mono"
             title="Switch Language / تغيير اللغة"
             aria-label="Toggle language"
             data-testid="button-auth-toggle-lang"
-            style={{ width: '40px', height: '28px', fontSize: '11px' }}
+            data-tauri-drag-region="false"
           >
             {locale === 'ar' ? 'EN' : 'عربي'}
           </button>
+
+          <div className="auth-header-divider" />
 
           {/* Native Window Controls (- □ ✕) */}
           <WindowControls />
@@ -1047,19 +1053,10 @@ function LoginScreen({
 
           {/* Feedback messages */}
           {error && (
-            <div className="auth-error">
-              <ShieldCheck size={16} className="shrink-0" />
-              <div>
-                <div>{error}</div>
-                {mode === 'signIn' && (error.includes('إنشاء') || error.includes('Create')) && (
-                  <button
-                    type="button"
-                    onClick={() => switchMode('signUp')}
-                    className="auth-error-action"
-                  >
-                    {isRtl ? 'اضغط هنا لإنشاء الحساب الآن' : 'Click here to Create Account now'}
-                  </button>
-                )}
+            <div className="auth-error" role="alert">
+              <AlertCircle size={15} className="shrink-0 text-red-400 mt-0.5" />
+              <div className="flex-1 text-[12.5px] leading-relaxed">
+                {error}
               </div>
             </div>
           )}

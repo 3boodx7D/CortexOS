@@ -10,6 +10,7 @@ import { useTranslation } from '@/lib/i18n';
 import { usePersistent } from '@/hooks/use-persistent';
 import { useDesktopDialog } from '@/components/ui/desktop-dialog';
 import { pickDirectory } from '@/lib/tauri';
+import { apiGet, apiPost } from '@/lib/api-client';
 
 export type Status = 'active' | 'client' | 'experiment' | 'archived';
 
@@ -181,10 +182,12 @@ export default function Projects({ notify }: { notify: (msg: string) => void }) 
   // Modals
   const [scaffolderOpen, setScaffolderOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
+  const [changePathOpen, setChangePathOpen] = useState(false);
+  const [customPathInput, setCustomPathInput] = useState(workspacePath);
 
   // Scaffolder form state
   const [scaffoldMode, setScaffoldMode] = useState<'ai' | 'template'>('ai');
-  const [scaffoldModel, setScaffoldModel] = useState<'gemini-pro' | 'deepseek'>('gemini-pro');
+  const [scaffoldModel, setScaffoldModel] = useState<'gemini-pro' | 'deepseek-flash' | 'deepseek-pro'>('gemini-pro');
   const [selectedTemplate, setSelectedTemplate] = useState('saas-next15');
   const [newProjectName, setNewProjectName] = useState('');
   const [aiPrompt, setAiPrompt] = useState('');
@@ -210,17 +213,14 @@ export default function Projects({ notify }: { notify: (msg: string) => void }) 
   // Fetch active running dev servers from background daemon
   const fetchActiveDevs = useCallback(async () => {
     try {
-      const res = await fetch('/api/projects/active-devs');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok && Array.isArray(data.active)) {
-          const map: Record<string, number> = {};
-          data.active.forEach((item: { path: string; pid: number }) => {
-            const normalized = item.path.toLowerCase().replace(/\\/g, '/');
-            map[normalized] = item.pid;
-          });
-          setActiveDevs(map);
-        }
+      const data = await apiGet<{ ok?: boolean; active?: Array<{ path: string; pid: number }> }>('/api/projects/active-devs');
+      if (data && data.ok && Array.isArray(data.active)) {
+        const map: Record<string, number> = {};
+        data.active.forEach((item: { path: string; pid: number }) => {
+          const normalized = item.path.toLowerCase().replace(/\\/g, '/');
+          map[normalized] = item.pid;
+        });
+        setActiveDevs(map);
       }
     } catch {
       // Telemetry silent fallback
@@ -267,26 +267,23 @@ export default function Projects({ notify }: { notify: (msg: string) => void }) 
     if (!pathToScan) return;
     setScanning(true);
     try {
-      const res = await fetch(`/api/projects/scan?path=${encodeURIComponent(pathToScan)}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok && Array.isArray(data.projects)) {
-          const merged: Project[] = data.projects.map((p: Project) => {
-            const overrideStatus = statusOverrides[p.path] || statusOverrides[p.name] || p.status;
-            const cachedSummary = aiSummaries[p.path] || aiSummaries[p.name] || p.ai_summary;
-            return {
-              ...p,
-              status: overrideStatus,
-              ai_summary: cachedSummary || null,
-            };
-          });
+      const data = await apiGet<{ ok?: boolean; projects?: Project[]; error?: string }>(`/api/projects/scan?path=${encodeURIComponent(pathToScan)}`);
+      if (data && data.ok && Array.isArray(data.projects)) {
+        const merged: Project[] = data.projects.map((p: Project) => {
+          const overrideStatus = statusOverrides[p.path] || statusOverrides[p.name] || p.status;
+          const cachedSummary = aiSummaries[p.path] || aiSummaries[p.name] || p.ai_summary;
+          return {
+            ...p,
+            status: overrideStatus,
+            ai_summary: cachedSummary || null,
+          };
+        });
 
-          setProjects(merged);
-          setCachedProjects(merged);
-          notify(locale === 'ar' ? `تم فحص ${merged.length} مشاريع بنجاح` : `Scanned ${merged.length} projects successfully`);
-        } else if (data.error) {
-          notify(locale === 'ar' ? `تنبيه: ${data.error}` : `Notice: ${data.error}`);
-        }
+        setProjects(merged);
+        setCachedProjects(merged);
+        notify(locale === 'ar' ? `تم فحص ${merged.length} مشاريع بنجاح` : `Scanned ${merged.length} projects successfully`);
+      } else if (data?.error) {
+        notify(locale === 'ar' ? `تنبيه: ${data.error}` : `Notice: ${data.error}`);
       }
     } catch (err) {
       console.warn('Scan workspace error:', err);
@@ -309,7 +306,13 @@ export default function Projects({ notify }: { notify: (msg: string) => void }) 
         setWorkspacePath(selected);
         await handleScanWorkspace(selected);
         notify(locale === 'ar' ? `تم تحديد مسار المشاريع: ${selected}` : `Workspace path set to: ${selected}`);
+      } else {
+        setCustomPathInput(workspacePath);
+        setChangePathOpen(true);
       }
+    } catch {
+      setCustomPathInput(workspacePath);
+      setChangePathOpen(true);
     } finally {
       setIsBrowsingWorkspace(false);
     }
@@ -318,21 +321,14 @@ export default function Projects({ notify }: { notify: (msg: string) => void }) 
   const handleLaunchIde = async (project: Project, ideOverride?: string) => {
     const ideToUse = ideOverride || defaultIde || 'antigravity';
     try {
-      const res = await fetch('/api/projects/launch-ide', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          project_path: project.path,
-          ide: ideToUse,
-        }),
+      const data = await apiPost<{ ok?: boolean; error?: string }>('/api/projects/launch-ide', {
+        project_path: project.path,
+        ide: ideToUse,
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok) {
-          notify(locale === 'ar' ? `تم فتح المشروع بـ ${getIdeLabel(ideToUse)}` : `Opened in ${getIdeLabel(ideToUse)}`);
-        } else {
-          notify(data.error || 'Failed to launch editor');
-        }
+      if (data && data.ok) {
+        notify(locale === 'ar' ? `تم فتح المشروع بـ ${getIdeLabel(ideToUse)}` : `Opened in ${getIdeLabel(ideToUse)}`);
+      } else {
+        notify(data?.error || 'Failed to launch editor');
       }
     } catch {
       notify('Failed to launch editor');
@@ -341,23 +337,19 @@ export default function Projects({ notify }: { notify: (msg: string) => void }) 
 
   const handleRunDevServer = async (project: Project) => {
     try {
-      const res = await fetch('/api/projects/run-dev', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project_path: project.path, mode: 'hidden' }),
+      const data = await apiPost<{ ok?: boolean; command?: string; error?: string }>('/api/projects/run-dev', {
+        project_path: project.path,
+        mode: 'hidden',
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok) {
-          notify(
-            locale === 'ar'
-              ? `تم تشغيل السيرفر بالخلفية: ${data.command}`
-              : `Dev server launched silently: ${data.command}`
-          );
-          fetchActiveDevs();
-        } else {
-          notify(data.error || 'Failed to launch dev server');
-        }
+      if (data && data.ok) {
+        notify(
+          locale === 'ar'
+            ? `تم تشغيل السيرفر بالخلفية: ${data.command}`
+            : `Dev server launched silently: ${data.command}`
+        );
+        fetchActiveDevs();
+      } else {
+        notify(data?.error || 'Failed to launch dev server');
       }
     } catch {
       notify('Failed to launch dev server');
@@ -367,19 +359,14 @@ export default function Projects({ notify }: { notify: (msg: string) => void }) 
   const handleStopDevServer = async (project: Project) => {
     setStoppingDevPath(project.path);
     try {
-      const res = await fetch('/api/projects/stop-dev', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project_path: project.path }),
+      const data = await apiPost<{ ok?: boolean; error?: string }>('/api/projects/stop-dev', {
+        project_path: project.path,
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok) {
-          notify(locale === 'ar' ? `تم إيقاف خادم التطوير بنجاح` : `Dev server stopped`);
-          fetchActiveDevs();
-        } else {
-          notify(data.error || 'Failed to stop dev server');
-        }
+      if (data && data.ok) {
+        notify(locale === 'ar' ? `تم إيقاف خادم التطوير بنجاح` : `Dev server stopped`);
+        fetchActiveDevs();
+      } else {
+        notify(data?.error || 'Failed to stop dev server');
       }
     } catch {
       notify('Failed to stop dev server');
@@ -401,25 +388,20 @@ export default function Projects({ notify }: { notify: (msg: string) => void }) 
 
     setCleaningId(project.id);
     try {
-      const res = await fetch('/api/projects/clean-cache', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project_path: project.path }),
+      const data = await apiPost<{ ok?: boolean; freed_mb?: number; error?: string }>('/api/projects/clean-cache', {
+        project_path: project.path,
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok) {
-          notify(locale === 'ar' ? `تم تحرير ${data.freed_mb} ميجابايت بنجاح!` : `Freed ${data.freed_mb} MB successfully!`);
-          setProjects((prev) =>
-            prev.map((p) =>
-              p.id === project.id
-                ? { ...p, has_node_modules: false, node_modules_size_mb: 0 }
-                : p
-            )
-          );
-        } else {
-          notify(data.error || 'Cleanup failed');
-        }
+      if (data && data.ok) {
+        notify(locale === 'ar' ? `تم تحرير ${data.freed_mb} ميجابايت بنجاح!` : `Freed ${data.freed_mb} MB successfully!`);
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.id === project.id
+              ? { ...p, has_node_modules: false, node_modules_size_mb: 0 }
+              : p
+          )
+        );
+      } else {
+        notify(data?.error || 'Cleanup failed');
       }
     } catch {
       notify('Cleanup failed');
@@ -457,37 +439,29 @@ export default function Projects({ notify }: { notify: (msg: string) => void }) 
         provider: scaffoldModel,
       };
 
-      const res = await fetch('/api/projects/scaffold', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const data = await apiPost<{ ok?: boolean; project_path?: string; files_created?: string[]; error?: string }>('/api/projects/scaffold', payload);
 
       clearTimeout(t1);
       clearTimeout(t2);
       setScaffoldingStep(4);
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok) {
-          notify(t('projects.createdSuccess'));
-          setScaffoldCreatedResult({
-            path: data.project_path,
-            files: data.files_created || [],
-            name: newProjectName.trim(),
-          });
-          await handleScanWorkspace();
-        } else {
-          notify(data.error || 'Scaffolding failed');
-          setScaffoldingStep(null);
-        }
+      if (data && data.ok) {
+        notify(t('projects.createdSuccess'));
+        setScaffoldCreatedResult({
+          path: data.project_path || '',
+          files: data.files_created || [],
+          name: newProjectName.trim(),
+        });
+        await handleScanWorkspace();
       } else {
-        notify('Scaffolding request failed');
+        notify(data?.error || 'Scaffolding failed');
         setScaffoldingStep(null);
       }
-    } catch {
-      notify('Failed to scaffold project');
+    } catch (err) {
+      clearTimeout(t1);
+      clearTimeout(t2);
       setScaffoldingStep(null);
+      notify('Scaffolding failed');
     }
   };
 
@@ -1186,7 +1160,8 @@ export default function Projects({ notify }: { notify: (msg: string) => void }) 
                     className="bg-secondary text-[11px] font-mono border border-border rounded px-2 py-1 text-foreground outline-none cursor-pointer"
                   >
                     <option value="gemini-pro" className="bg-popover text-foreground">Google Gemini 3.6 Flash</option>
-                    <option value="deepseek" className="bg-popover text-foreground">DeepSeek Chat</option>
+                    <option value="deepseek-flash" className="bg-popover text-foreground">DeepSeek V4 Flash</option>
+                    <option value="deepseek-pro" className="bg-popover text-foreground">DeepSeek V4 Pro</option>
                   </select>
                 </div>
               )}
@@ -1452,6 +1427,72 @@ export default function Projects({ notify }: { notify: (msg: string) => void }) 
               </button>
               <button type="submit" className="btn btn-primary text-xs h-8 px-4">
                 {t('projects.registerLocally')}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* 7. Modal: Change Workspace Folder Path */}
+      {changePathOpen && (
+        <Modal
+          title={locale === 'ar' ? 'تحديد مسار مجلد المشاريع' : 'Set Workspace Directory'}
+          onClose={() => setChangePathOpen(false)}
+        >
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const trimmed = customPathInput.trim();
+              if (trimmed) {
+                setWorkspacePath(trimmed);
+                handleScanWorkspace(trimmed);
+                setChangePathOpen(false);
+                notify(locale === 'ar' ? `تم حفظ المسار: ${trimmed}` : `Workspace path set to: ${trimmed}`);
+              }
+            }}
+            className="flex flex-col gap-4"
+          >
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {locale === 'ar'
+                ? 'أدخل المسار الكامل للمجلد الذي يحتوي على مشاريعك البرمجية على القرص:'
+                : 'Enter the full directory path where your local projects are located:'}
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={customPathInput}
+                onChange={(e) => setCustomPathInput(e.target.value)}
+                placeholder="D:\all2026.2007 or C:\Projects"
+                required
+                className="editable-input text-xs mono flex-1"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={async () => {
+                  const p = await pickDirectory();
+                  if (p) setCustomPathInput(p);
+                }}
+                className="btn btn-outline text-xs px-3 shrink-0 gap-1.5"
+                title="Browse..."
+              >
+                <FolderSearch size={14} />
+                <span>{locale === 'ar' ? 'استعراض...' : 'Browse...'}</span>
+              </button>
+            </div>
+            <div className="flex justify-end gap-2 pt-3 border-t border-border">
+              <button
+                type="button"
+                onClick={() => setChangePathOpen(false)}
+                className="btn btn-ghost text-xs h-8 px-3"
+              >
+                {locale === 'ar' ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary text-xs h-8 px-4 font-semibold"
+              >
+                {locale === 'ar' ? 'حفظ وفحص المشاريع' : 'Save & Scan'}
               </button>
             </div>
           </form>

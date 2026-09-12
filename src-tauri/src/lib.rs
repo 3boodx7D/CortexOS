@@ -2,6 +2,35 @@ use sysinfo::System;
 use serde::Serialize;
 use tauri::State;
 use std::sync::Mutex;
+use std::process::Child;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+pub struct DaemonState {
+    pub token: String,
+    pub process: Mutex<Option<Child>>,
+}
+
+impl Drop for DaemonState {
+    fn drop(&mut self) {
+        if let Ok(mut lock) = self.process.lock() {
+            if let Some(mut child) = lock.take() {
+                let _ = child.kill();
+            }
+        }
+    }
+}
+
+#[allow(dead_code)]
+fn generate_daemon_token() -> String {
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos();
+    let pid = std::process::id();
+    format!("{:016x}{:08x}cortex", now, pid)
+}
+
+#[tauri::command]
+fn get_daemon_token(state: State<'_, DaemonState>) -> String {
+    state.token.clone()
+}
 
 #[derive(Serialize, Clone)]
 pub struct MemoryInfo {
@@ -70,22 +99,79 @@ fn get_system_info(state: State<'_, SysState>) -> SystemInfo {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  let mut sys = System::new_all();
-  sys.refresh_all();
+    let mut sys = System::new_all();
+    sys.refresh_all();
+
+    // Generate or fetch internal daemon secret
+    let token = std::env::var("CORTEX_DAEMON_TOKEN").unwrap_or_else(|_| "cortex-local-daemon-token-9a7f3e".to_string());
+    std::env::set_var("CORTEX_DAEMON_TOKEN", &token);
+
+    #[cfg(not(debug_assertions))]
+    let mut child_proc: Option<Child> = None;
+    #[cfg(debug_assertions)]
+    let child_proc: Option<Child> = None;
+
+    #[cfg(not(debug_assertions))]
+    {
+        let exe_dir = std::env::current_exe().ok().and_then(|p| p.parent().map(|p| p.to_path_buf()));
+        let sidecar_candidates = [
+            exe_dir.as_ref().map(|d| d.join("cortex-backend.exe")),
+            exe_dir.as_ref().map(|d| d.join("cortex-backend-x86_64-pc-windows-msvc.exe")),
+            exe_dir.as_ref().map(|d| d.join("binaries").join("cortex-backend.exe")),
+            exe_dir.as_ref().map(|d| d.join("binaries").join("cortex-backend-x86_64-pc-windows-msvc.exe")),
+            Some(std::path::PathBuf::from("src-tauri/binaries/cortex-backend.exe")),
+            Some(std::path::PathBuf::from("cortex-backend.exe")),
+        ];
+
+        let found_binary = sidecar_candidates.into_iter().flatten().find(|p| p.exists());
+
+        if let Some(candidate) = found_binary {
+            #[cfg(target_os = "windows")]
+            {
+                use std::os::windows::process::CommandExt;
+                // Clean up any stale backend instance before launching fresh one
+                let _ = std::process::Command::new("taskkill")
+                    .args(["/F", "/IM", "cortex-backend.exe", "/T"])
+                    .creation_flags(0x08000000)
+                    .status();
+            }
+
+            let mut cmd = std::process::Command::new(&candidate);
+            cmd.env("CORTEX_DAEMON_TOKEN", &token);
+            if let Some(parent) = candidate.parent() {
+                cmd.current_dir(parent);
+            }
+            
+            #[cfg(target_os = "windows")]
+            {
+                use std::os::windows::process::CommandExt;
+                cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+            }
+            
+            if let Ok(child) = cmd.spawn() {
+                child_proc = Some(child);
+            }
+        }
+    }
   
-  tauri::Builder::default()
-    .manage(SysState(Mutex::new(sys)))
-    .setup(|app| {
-      if cfg!(debug_assertions) {
-        app.handle().plugin(
-          tauri_plugin_log::Builder::default()
-            .level(log::LevelFilter::Info)
-            .build(),
-        )?;
-      }
-      Ok(())
-    })
-    .invoke_handler(tauri::generate_handler![get_system_info])
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    tauri::Builder::default()
+        .manage(SysState(Mutex::new(sys)))
+        .manage(DaemonState {
+            token,
+            process: Mutex::new(child_proc),
+        })
+        .setup(|app| {
+            if cfg!(debug_assertions) {
+                app.handle().plugin(
+                    tauri_plugin_log::Builder::default()
+                        .level(log::LevelFilter::Info)
+                        .build(),
+                )?;
+            }
+            app.handle().plugin(tauri_plugin_opener::init())?;
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![get_system_info, get_daemon_token])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }

@@ -11,6 +11,7 @@ import { useTranslation } from '@/lib/i18n';
 import { usePersistent } from '@/hooks/use-persistent';
 import { useDesktopDialog } from '@/components/ui/desktop-dialog';
 import type { Project, AISummary, Status } from '@/pages/projects';
+import { apiGet, apiPost } from '@/lib/api-client';
 
 interface CustomIdeCommand {
   id: string;
@@ -142,9 +143,8 @@ export default function ProjectDetailsPage({ notify }: { notify: (msg: string) =
   // Check dev server status & detect smart command
   const checkDevStatus = useCallback(async (projectPath: string) => {
     try {
-      const res = await fetch(`/api/projects/dev-status?path=${encodeURIComponent(projectPath)}`);
-      if (res.ok) {
-        const data = await res.json();
+      const data = await apiGet<{ running?: boolean; pid?: number }>(`/api/projects/dev-status?path=${encodeURIComponent(projectPath)}`);
+      if (data) {
         setIsRunningDev(Boolean(data.running));
         setDevPid(data.pid || null);
       }
@@ -155,12 +155,9 @@ export default function ProjectDetailsPage({ notify }: { notify: (msg: string) =
 
   const detectSmartCommand = useCallback(async (projectPath: string) => {
     try {
-      const res = await fetch(`/api/projects/detect-command?path=${encodeURIComponent(projectPath)}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.command && !devCommand) {
-          setDevCommand(data.command);
-        }
+      const data = await apiGet<{ command?: string }>(`/api/projects/detect-command?path=${encodeURIComponent(projectPath)}`);
+      if (data && data.command && !devCommand) {
+        setDevCommand(data.command);
       }
     } catch {
       // silent
@@ -170,12 +167,9 @@ export default function ProjectDetailsPage({ notify }: { notify: (msg: string) =
   const fetchProjectFiles = useCallback(async (projectPath: string) => {
     setLoadingFiles(true);
     try {
-      const res = await fetch(`/api/projects/files?path=${encodeURIComponent(projectPath)}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok && Array.isArray(data.items)) {
-          setFileItems(data.items);
-        }
+      const data = await apiGet<{ ok?: boolean; items?: FileTreeItem[] }>(`/api/projects/files?path=${encodeURIComponent(projectPath)}`);
+      if (data && data.ok && Array.isArray(data.items)) {
+        setFileItems(data.items);
       }
     } catch {
       // silent
@@ -188,12 +182,9 @@ export default function ProjectDetailsPage({ notify }: { notify: (msg: string) =
   const fetchLogs = useCallback(async (projectPath: string) => {
     setLoadingLogs(true);
     try {
-      const res = await fetch(`/api/projects/logs?path=${encodeURIComponent(projectPath)}&max_lines=120`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok && typeof data.logs === 'string') {
-          setServerLogs(data.logs);
-        }
+      const data = await apiGet<{ ok?: boolean; logs?: string }>(`/api/projects/logs?path=${encodeURIComponent(projectPath)}&max_lines=120`);
+      if (data && data.ok && typeof data.logs === 'string') {
+        setServerLogs(data.logs);
       }
     } catch {
       // silent
@@ -206,12 +197,9 @@ export default function ProjectDetailsPage({ notify }: { notify: (msg: string) =
   const fetchSnapshots = useCallback(async (projectPath: string) => {
     setLoadingSnapshots(true);
     try {
-      const res = await fetch(`/api/projects/backup/list?project_path=${encodeURIComponent(projectPath)}&backup_dir=${encodeURIComponent(backupDir)}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok && Array.isArray(data.snapshots)) {
-          setSnapshots(data.snapshots);
-        }
+      const data = await apiGet<{ ok?: boolean; snapshots?: ProjectSnapshot[] }>(`/api/projects/backup/list?project_path=${encodeURIComponent(projectPath)}&backup_dir=${encodeURIComponent(backupDir)}`);
+      if (data && data.ok && Array.isArray(data.snapshots)) {
+        setSnapshots(data.snapshots);
       }
     } catch {
       // silent
@@ -245,26 +233,19 @@ export default function ProjectDetailsPage({ notify }: { notify: (msg: string) =
     if (!project) return;
     setStartingDev(true);
     try {
-      const res = await fetch('/api/projects/run-dev', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          project_path: project.path,
-          command: devCommand.trim() || undefined,
-          mode: devMode,
-        }),
+      const data = await apiPost<{ ok?: boolean; pid?: number; command?: string; error?: string }>('/api/projects/run-dev', {
+        project_path: project.path,
+        command: devCommand.trim() || undefined,
+        mode: devMode,
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok) {
-          setIsRunningDev(true);
-          setDevPid(data.pid || null);
-          notify(locale === 'ar' ? `تم تشغيل السيرفر (${data.command})` : `Server launched (${data.command})`);
-          setTimeout(() => fetchLogs(project.path), 1200);
-        } else {
-          notify(data.error || 'Failed to start dev server');
-        }
+      if (data && data.ok) {
+        setIsRunningDev(true);
+        setDevPid(data.pid || null);
+        notify(locale === 'ar' ? `تم تشغيل السيرفر (${data.command})` : `Server launched (${data.command})`);
+        setTimeout(() => fetchLogs(project.path), 1200);
+      } else {
+        notify(data?.error || 'Failed to start dev server');
       }
     } catch {
       notify('Failed to start dev server');
@@ -278,19 +259,14 @@ export default function ProjectDetailsPage({ notify }: { notify: (msg: string) =
     if (!project) return;
     setStoppingDev(true);
     try {
-      const res = await fetch('/api/projects/stop-dev', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project_path: project.path }),
+      const data = await apiPost<{ ok?: boolean; error?: string }>('/api/projects/stop-dev', {
+        project_path: project.path,
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok) {
-          setIsRunningDev(false);
-          setDevPid(null);
-          notify(locale === 'ar' ? 'تم إيقاف السيرفر بنجاح' : 'Dev server stopped');
-        }
+      if (data && data.ok) {
+        setIsRunningDev(false);
+        setDevPid(null);
+        notify(locale === 'ar' ? 'تم إيقاف السيرفر بنجاح' : 'Dev server stopped');
       }
     } catch {
       notify('Failed to stop dev server');
@@ -305,24 +281,17 @@ export default function ProjectDetailsPage({ notify }: { notify: (msg: string) =
     setAiDiagnosing(true);
     setShowDiagnosisModal(true);
     try {
-      const res = await fetch('/api/projects/analyze-logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          logs: serverLogs,
-          project_name: project.name,
-          stack: project.stack,
-          provider: 'auto',
-        }),
+      const data = await apiPost<{ ok?: boolean; analysis?: string; error?: string }>('/api/projects/analyze-logs', {
+        logs: serverLogs,
+        project_name: project.name,
+        stack: project.stack,
+        provider: 'auto',
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok && data.analysis) {
-          setAiDiagnosisResult(data.analysis);
-        } else {
-          setAiDiagnosisResult(data.error || 'Could not diagnose error.');
-        }
+      if (data && data.ok && data.analysis) {
+        setAiDiagnosisResult(data.analysis);
+      } else {
+        setAiDiagnosisResult(data?.error || 'Could not diagnose error.');
       }
     } catch (e: any) {
       setAiDiagnosisResult(`Error connecting to AI: ${e.message}`);
@@ -337,20 +306,14 @@ export default function ProjectDetailsPage({ notify }: { notify: (msg: string) =
   const handleLaunchIde = async (ideId: string) => {
     if (!project) return;
     try {
-      const res = await fetch('/api/projects/launch-ide', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          project_path: project.path,
-          ide: ideId,
-        }),
+      await apiPost('/api/projects/launch-ide', {
+        project_path: project.path,
+        ide: ideId,
       });
 
-      if (res.ok) {
-        const selectedObj = customIdes.find((i) => i.id === ideId);
-        const name = selectedObj ? selectedObj.name : ideId;
-        notify(locale === 'ar' ? `تم فتح المشروع بـ ${name}` : `Launched in ${name}`);
-      }
+      const selectedObj = customIdes.find((i) => i.id === ideId);
+      const name = selectedObj ? selectedObj.name : ideId;
+      notify(locale === 'ar' ? `تم فتح المشروع بـ ${name}` : `Launched in ${name}`);
     } catch {
       notify('Failed to launch IDE');
     }
@@ -361,37 +324,30 @@ export default function ProjectDetailsPage({ notify }: { notify: (msg: string) =
     if (!project) return;
     setAnalyzingAi(true);
     try {
-      const res = await fetch('/api/ai/explain-project', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          project_path: project.path,
-          provider: 'auto',
-        }),
+      const data = await apiPost<{ ok?: boolean; summary?: string; role?: string; architecture?: string; run_command?: string; model?: string; provider?: string }>('/api/ai/explain-project', {
+        project_path: project.path,
+        provider: 'auto',
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok && data.summary) {
-          const newSummary: AISummary = {
-            summary: data.summary,
-            role: data.role || 'Production Application',
-            architecture: data.architecture || 'Modern Component Architecture',
-            run_command: data.run_command || devCommand,
-            model: data.model,
-            provider: data.provider,
-          };
+      if (data && data.ok && data.summary) {
+        const newSummary: AISummary = {
+          summary: data.summary,
+          role: data.role || 'Production Application',
+          architecture: data.architecture || 'Modern Component Architecture',
+          run_command: data.run_command || devCommand,
+          model: data.model,
+          provider: data.provider,
+        };
 
-          setAiSummaries((prev) => ({ ...prev, [project.id]: newSummary }));
-          setCachedProjects((prev) =>
-            prev.map((p) => (p.id === project.id ? { ...p, ai_summary: newSummary } : p))
-          );
+        setAiSummaries((prev) => ({ ...prev, [project.id]: newSummary }));
+        setCachedProjects((prev) =>
+          prev.map((p) => (p.id === project.id ? { ...p, ai_summary: newSummary } : p))
+        );
 
-          if (data.run_command && !devCommand) {
-            setDevCommand(data.run_command);
-          }
-          notify(locale === 'ar' ? 'تم التلخيص والتوثيق الذكي بنجاح' : 'AI documentation synthesized');
+        if (data.run_command && !devCommand) {
+          setDevCommand(data.run_command);
         }
+        notify(locale === 'ar' ? 'تم التلخيص والتوثيق الذكي بنجاح' : 'AI documentation synthesized');
       }
     } catch {
       notify('AI analysis failed');
@@ -405,27 +361,20 @@ export default function ProjectDetailsPage({ notify }: { notify: (msg: string) =
     if (!project) return;
     setCreatingSnapshot(true);
     try {
-      const res = await fetch('/api/projects/backup/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          project_path: project.path,
-          version_tag: snapshotTag,
-          note: snapshotNote,
-          backup_dir: backupDir,
-        }),
+      const data = await apiPost<{ ok?: boolean; error?: string }>('/api/projects/backup/create', {
+        project_path: project.path,
+        version_tag: snapshotTag,
+        note: snapshotNote,
+        backup_dir: backupDir,
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok) {
-          notify(locale === 'ar' ? `تم إنشاء لقطة ZIP (${snapshotTag})` : `Snapshot created (${snapshotTag})`);
-          setShowCreateSnapshotModal(false);
-          setSnapshotNote('');
-          fetchSnapshots(project.path);
-        } else {
-          notify(data.error || 'Failed to create snapshot');
-        }
+      if (data && data.ok) {
+        notify(locale === 'ar' ? `تم إنشاء لقطة ZIP (${snapshotTag})` : `Snapshot created (${snapshotTag})`);
+        setShowCreateSnapshotModal(false);
+        setSnapshotNote('');
+        fetchSnapshots(project.path);
+      } else {
+        notify(data?.error || 'Failed to create snapshot');
       }
     } catch {
       notify('Failed to create snapshot');
@@ -448,23 +397,16 @@ export default function ProjectDetailsPage({ notify }: { notify: (msg: string) =
     if (!ok) return;
 
     try {
-      const res = await fetch('/api/projects/backup/restore', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          zip_path: snapshot.zip_filepath,
-          target_dir: project.path,
-        }),
+      const data = await apiPost<{ ok?: boolean; error?: string }>('/api/projects/backup/restore', {
+        zip_path: snapshot.zip_filepath,
+        target_dir: project.path,
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok) {
-          notify(locale === 'ar' ? 'تمت استعادة الملفات بنجاح!' : 'Files restored successfully!');
-          fetchProjectFiles(project.path);
-        } else {
-          notify(data.error || 'Restoration failed');
-        }
+      if (data && data.ok) {
+        notify(locale === 'ar' ? 'تمت استعادة الملفات بنجاح!' : 'Files restored successfully!');
+        fetchProjectFiles(project.path);
+      } else {
+        notify(data?.error || 'Restoration failed');
       }
     } catch {
       notify('Restoration failed');
@@ -474,11 +416,7 @@ export default function ProjectDetailsPage({ notify }: { notify: (msg: string) =
   // Open Backup Folder
   const handleOpenBackupVault = async () => {
     try {
-      await fetch('/api/projects/backup/open-folder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ backup_dir: backupDir }),
-      });
+      await apiPost('/api/projects/backup/open-folder', { backup_dir: backupDir });
     } catch {
       // silent
     }
@@ -499,22 +437,14 @@ export default function ProjectDetailsPage({ notify }: { notify: (msg: string) =
 
     setCleaningCache(true);
     try {
-      const res = await fetch('/api/projects/clean-cache', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project_path: project.path }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok) {
-          setCachedProjects((prev) =>
-            prev.map((p) =>
-              p.id === project.id ? { ...p, has_node_modules: false, node_modules_size_mb: 0 } : p
-            )
-          );
-          notify(locale === 'ar' ? 'تم تحرير المساحة بنجاح' : 'Cache purged successfully');
-        }
+      const data = await apiPost<{ ok?: boolean; error?: string }>('/api/projects/clean-cache', { path: project.path });
+      if (data && data.ok) {
+        setCachedProjects((prev) =>
+          prev.map((p) =>
+            p.id === project.id ? { ...p, has_node_modules: false, node_modules_size_mb: 0 } : p
+          )
+        );
+        notify(locale === 'ar' ? 'تم تحرير المساحة بنجاح' : 'Cache purged successfully');
       }
     } catch {
       notify('Failed to clean cache');

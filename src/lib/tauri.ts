@@ -1,4 +1,5 @@
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
+import { apiGet } from '@/lib/api-client';
 
 export type TauriResult<T> = { source: 'tauri' | 'mock'; value: T };
 
@@ -10,8 +11,12 @@ declare global {
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+export function isTauri(): boolean {
+  return typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__);
+}
+
 export async function invoke<T>(command: string, args?: Record<string, unknown>): Promise<TauriResult<T>> {
-  const hasTauri = typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__);
+  const hasTauri = isTauri();
   if (hasTauri) {
     try {
       const result = await tauriInvoke<T>(command, args);
@@ -27,22 +32,19 @@ export async function invoke<T>(command: string, args?: Record<string, unknown>)
       return { source: 'mock', value: ({
           platform: 'windows',
           cpu: {
-            brand: 'Intel(R) Core(TM) Ultra 7 155H',
-            usage: 14.2,
-            cores: 22,
+            brand: 'Unknown CPU (Mock)',
+            usage: 0,
+            cores: 0,
           },
           memory: {
-              total_gb: 15.4,
-              free_gb: 3.8,
-              used_gb: 11.6,
-              usage_percent: 75.3
+              total_gb: 0,
+              free_gb: 0,
+              used_gb: 0,
+              usage_percent: 0
           },
-          gpus: ['Intel(R) Arc(TM) Graphics', 'NVIDIA GeForce RTX 3050 6GB Laptop GPU'],
-          gpu: 'NVIDIA GeForce RTX 3050 6GB Laptop GPU',
-          disks: [
-            { drive: 'C:', label: 'AboodOS', total_gb: 930.5, used_gb: 501.1, free_gb: 429.4, percent: 53.9 },
-            { drive: 'D:', label: 'New Volume', total_gb: 931.5, used_gb: 191.3, free_gb: 740.2, percent: 20.5 }
-          ]
+          gpus: ['Unknown GPU (Mock)'],
+          gpu: 'Unknown GPU (Mock)',
+          disks: []
       } as T) };
   }
   
@@ -50,7 +52,25 @@ export async function invoke<T>(command: string, args?: Record<string, unknown>)
 }
 
 export async function openExternal(target: string): Promise<TauriResult<{ opened: boolean }>> {
-  return invoke<{ opened: boolean }>('open_external', { target });
+  const hasTauri = typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__);
+  if (hasTauri) {
+    try {
+      const { openUrl, openPath } = await import('@tauri-apps/plugin-opener');
+      if (target.startsWith('http://') || target.startsWith('https://')) {
+        await openUrl(target);
+      } else {
+        await openPath(target);
+      }
+      return { source: 'tauri', value: { opened: true } };
+    } catch (e) {
+      console.warn('tauri-plugin-opener error:', e);
+    }
+  }
+  
+  if (typeof window !== 'undefined' && (target.startsWith('http://') || target.startsWith('https://'))) {
+    window.open(target, '_blank');
+  }
+  return { source: 'mock', value: { opened: true } };
 }
 
 export async function organizeWorkspace(): Promise<TauriResult<{ filesMoved: number; foldersCreated: number }>> {
@@ -59,15 +79,9 @@ export async function organizeWorkspace(): Promise<TauriResult<{ filesMoved: num
 
 export async function pickDirectory(): Promise<string | null> {
   try {
-    const res = await fetch('http://localhost:8000/api/system/pick-directory');
-    if (res.ok) {
-      const data = await res.json();
-      if (data.path && !data.canceled) {
-        return data.path;
-      }
-      if (data.canceled) {
-        return null;
-      }
+    const data = await apiGet<{ path: string; canceled?: boolean }>('/api/system/pick-directory');
+    if (data && data.path && !data.canceled) {
+      return data.path;
     }
   } catch (err) {
     console.warn('pick-directory error:', err);

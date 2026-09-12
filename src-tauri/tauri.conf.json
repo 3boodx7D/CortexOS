@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "CortexOS",
-  "version": "0.3.12",
-  "identifier": "com.tauri.dev",
+  "version": "0.3.20",
+  "identifier": "com.cortexos.desktop",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -26,12 +26,15 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:8000 https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' blob:"
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
+    "externalBin": [
+      "binaries/cortex-backend"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -39,6 +42,14 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "nsis/header.bmp",
+        "sidebarImage": "nsis/sidebar.bmp",
+        "installMode": "currentUser"
+      }
+    },
     "android": {
       "debugApplicationIdSuffix": ".debug"
     }

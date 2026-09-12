@@ -96,6 +96,8 @@ class SummarizeResponse(BaseModel):
 class QuizRequest(BaseModel):
     text: str
     provider: str = "auto"
+    count: int = 5
+    difficulty: str = "medium"  # "easy" | "medium" | "hard" | "expert"
 
 class QuizResponse(BaseModel):
     ok: bool = True
@@ -116,3 +118,32 @@ class FlashcardsResponse(BaseModel):
     flashcards: Optional[List[Dict[str, str]]] = None
     text: Optional[str] = None
     error: Optional[str] = None
+
+class CortexChatRequest(BaseModel):
+    prompt: str
+    tier: str = "pro"  # "flash" | "pro" | "ultra"
+    ai_name: str = "CORTEX"
+    language: str = "auto"  # "auto" | "arabic" | "english" | "bilingual"
+    teaching_style: str = "professor"  # "socratic" | "professor" | "coach" | "crammer"
+    academic_level: str = "undergrad"  # "highschool" | "undergrad" | "postgrad" | "pro"
+    temperature: float = 0.35
+    reasoning_depth: str = "balanced"  # "instant" | "balanced" | "deep"
+    custom_directives: Optional[str] = None
+    ground_in_vault: bool = True
+    ground_in_codebase: bool = True
+    show_thinking_trace: bool = True
+    workspace_path: Optional[str] = None
+    vault_path: Optional[str] = None
+
+class CortexChatResponse(BaseModel):
+    ok: bool = True
+    answer: str
+    thinking: str = ""
+    tokens: int = 0
+    latency_ms: int = 0
+    tier: str = "pro"
+    ai_name: str = "CORTEX"
+    provider: str = "cortexai"
+    model: str = "CORTEXAI Pro (v2.5)"
+    error: Optional[str] = None
+

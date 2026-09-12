@@ -9,11 +9,12 @@ ALLOWED_CLEAN_TARGETS = {
     ".turbo", "build", "__pycache__", ".cache", ".nuxt", ".output"
 }
 
-def calculate_folder_size_mb(folder_path: str) -> float:
-    """Calculates folder size in MB safely."""
+def calculate_folder_size_mb(folder_path: str, max_files: int = 400) -> float:
+    """Calculates folder size in MB safely with a cap on files visited to prevent UI freezes."""
     if not os.path.exists(folder_path):
         return 0.0
     total_size = 0
+    count = 0
     try:
         for dirpath, dirnames, filenames in os.walk(folder_path):
             for f in filenames:
@@ -21,6 +22,10 @@ def calculate_folder_size_mb(folder_path: str) -> float:
                 try:
                     if not os.path.islink(fp):
                         total_size += os.path.getsize(fp)
+                        count += 1
+                        if max_files and count >= max_files:
+                            # Fast estimation to avoid blocking the event loop
+                            return round((total_size / (1024 * 1024)) * 2.2, 2)
                 except Exception:
                     pass
     except Exception:
@@ -54,8 +59,10 @@ def clean_project_cache(project_path: str, targets: List[str] = None) -> Dict[st
         target_path = os.path.join(abs_project, target)
         abs_target = os.path.abspath(target_path)
 
-        # Security containment check: abs_target MUST strictly be a direct subfolder of abs_project
-        if not abs_target.startswith(abs_project) or abs_target == abs_project:
+        # Security containment check: resolve real symlinks and ensure real_target is strictly a subpath of real_project
+        real_project = os.path.realpath(abs_project)
+        real_target = os.path.realpath(abs_target)
+        if os.path.commonpath([real_project, real_target]) != real_project or real_project == real_target:
             continue
 
         if os.path.exists(abs_target) and os.path.isdir(abs_target):

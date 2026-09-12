@@ -163,13 +163,33 @@ def scaffold_template_project(workspace_path: str, project_name: str, template_i
     if not clean_name:
         clean_name = "new-cortex-project"
         
-    target_dir = os.path.join(workspace_path, clean_name)
-    if os.path.exists(target_dir):
+    abs_workspace = os.path.abspath(workspace_path)
+    real_workspace = os.path.realpath(abs_workspace)
+
+    # Protect system root and sensitive directories
+    system_dirs = {
+        os.path.realpath(os.environ.get("SystemRoot", "C:\\Windows")),
+        os.path.realpath(os.environ.get("ProgramFiles", "C:\\Program Files")),
+        os.path.realpath(os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")),
+    }
+    for sys_dir in system_dirs:
+        if os.path.commonpath([sys_dir, real_workspace]) == sys_dir:
+            return {"ok": False, "error": "Cannot scaffold inside system protected directory", "files_created": []}
+
+    target_dir = os.path.join(abs_workspace, clean_name)
+    abs_target_dir = os.path.abspath(target_dir)
+    real_target_dir = os.path.realpath(abs_target_dir)
+
+    if os.path.commonpath([real_workspace, real_target_dir]) != real_workspace or real_workspace == real_target_dir:
+        return {"ok": False, "error": "Invalid workspace path: path traversal detected", "files_created": []}
+
+    if os.path.exists(real_target_dir):
         # Append timestamp to avoid overwriting
         import time
-        target_dir = f"{target_dir}-{int(time.time()) % 10000}"
-        
-    os.makedirs(target_dir, exist_ok=True)
+        real_target_dir = f"{real_target_dir}-{int(time.time()) % 10000}"
+        abs_target_dir = real_target_dir
+
+    os.makedirs(real_target_dir, exist_ok=True)
     
     template = STARTER_TEMPLATES.get(template_id, STARTER_TEMPLATES["saas-next15"])
     files_created = []
@@ -234,11 +254,14 @@ def scaffold_ai_custom_project(workspace_path: str, project_name: str, prompt: s
     
     raw_text = ""
     try:
-        if provider == "deepseek":
-            res = call_deepseek(user_prompt, model=DEEPSEEK_MODEL, system_prompt=system_instruction, timeout=30)
+        if provider in ["deepseek", "deepseek-flash", "deepseek-v4-flash"]:
+            res = call_deepseek(user_prompt, model=DEEPSEEK_FLASH_MODEL, system_prompt=system_instruction, timeout=35, max_tokens=3072)
+            raw_text = res["text"]
+        elif provider in ["deepseek-pro", "deepseek-v4-pro"]:
+            res = call_deepseek(user_prompt, model=DEEPSEEK_PRO_MODEL, system_prompt=system_instruction, timeout=40, max_tokens=3500)
             raw_text = res["text"]
         else:
-            res = call_gemini(user_prompt, model=GEMINI_PRO_MODEL, system_prompt=system_instruction, timeout=25)
+            res = call_gemini(user_prompt, model=GEMINI_PRO_MODEL, system_prompt=system_instruction, timeout=30, max_tokens=3072)
             raw_text = res["text"]
     except Exception as e:
         print(f"[scaffolder] AI generation error: {e}, falling back to template")
@@ -264,6 +287,7 @@ def scaffold_ai_custom_project(workspace_path: str, project_name: str, prompt: s
         
     files_created = []
     abs_target_dir = os.path.abspath(target_dir)
+    real_target_dir = os.path.realpath(abs_target_dir)
 
     for rel_path, file_content in files_dict.items():
         if not rel_path or not isinstance(rel_path, str):
@@ -278,9 +302,10 @@ def scaffold_ai_custom_project(workspace_path: str, project_name: str, prompt: s
             clean_rel = "/".join(parts)
 
         full_path = os.path.abspath(os.path.join(abs_target_dir, clean_rel))
+        real_full_path = os.path.realpath(full_path)
         
-        # Security assertion: full_path MUST be strictly inside abs_target_dir
-        if not full_path.startswith(abs_target_dir):
+        # Security assertion: real_full_path MUST be strictly inside real_target_dir
+        if os.path.commonpath([real_target_dir, real_full_path]) != real_target_dir:
             continue
 
         if isinstance(file_content, dict):

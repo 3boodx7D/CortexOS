@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { invoke } from '@/lib/tauri';
+import { apiGet, apiPost } from '@/lib/api-client';
 
 type DiskData = {
   drive: string;
@@ -86,9 +87,8 @@ export default function MyPc() {
   const fetchTelemetry = useCallback(async () => {
     // 1. Attempt FastAPI hardware endpoint
     try {
-      const res = await fetch('/api/system/hardware');
-      if (res.ok) {
-        const json = await res.json();
+      const json = await apiGet<HardwareDetails>('/api/system/hardware');
+      if (json) {
         setData(json);
         return;
       }
@@ -136,14 +136,11 @@ export default function MyPc() {
     setFlushing(true);
     setFlushResult(null);
     try {
-      const res = await fetch('/api/system/flush-ram', { method: 'POST' });
-      if (res.ok) {
-        const json = await res.json();
-        setFlushResult({
-          freedGB: typeof json.freedGB === 'number' ? json.freedGB : 0.5,
-          procs: typeof json.trimmedProcesses === 'number' ? json.trimmedProcesses : 0,
-        });
-      }
+      const json = await apiPost<{ freedGB?: number; trimmedProcesses?: number }>('/api/system/flush-ram');
+      setFlushResult({
+        freedGB: typeof json.freedGB === 'number' ? json.freedGB : 0.5,
+        procs: typeof json.trimmedProcesses === 'number' ? json.trimmedProcesses : 0,
+      });
     } catch (err) {
       console.error('Flush RAM failed:', err);
     } finally {
@@ -157,7 +154,7 @@ export default function MyPc() {
     if (launchingTool) return;
     setLaunchingTool(tool);
     try {
-      await fetch(`/api/system/launch/${tool}`, { method: 'POST' });
+      await apiPost(`/api/system/launch/${tool}`);
     } catch (err) {
       console.error(`Launch ${tool} failed:`, err);
     } finally {

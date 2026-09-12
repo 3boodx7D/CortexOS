@@ -46,4 +46,6 @@ __pycache__/
 # Tauri builds
 src-tauri/target/
 src-tauri/gen/schemas/
+src-tauri/binaries/
+dist-installer/
 

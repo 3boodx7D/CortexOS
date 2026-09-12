@@ -16,6 +16,7 @@ const navItems = [
   { href: '/team', labelKey: 'nav.team', icon: Users },
   { href: '/friends', labelKey: 'nav.friends', icon: UserPlus },
   { href: '/study', labelKey: 'nav.study', icon: BookOpen },
+  { href: '/cortex-ai', labelKey: 'nav.cortexAi', icon: BrainCircuit },
   { href: '/deadlines', labelKey: 'nav.deadlines', icon: CalendarClock },
   { href: '/my-pc', labelKey: 'nav.myPc', icon: Cpu },
   { href: '/settings', labelKey: 'nav.settings', icon: Settings2 },
@@ -25,9 +26,9 @@ const navItems = [
 
 const navGroups = [
   { labelKey: 'nav.workspace', items: [navItems[0], navItems[1], navItems[2], navItems[3]] },
-  { labelKey: 'nav.academic', items: [navItems[4], navItems[5]] },
-  { labelKey: 'nav.system', items: [navItems[6], navItems[7]] },
-  { labelKey: 'nav.lounge', items: [navItems[8], navItems[9]] },
+  { labelKey: 'nav.academic', items: [navItems[4], navItems[5], navItems[6]] },
+  { labelKey: 'nav.system', items: [navItems[7], navItems[8]] },
+  { labelKey: 'nav.lounge', items: [navItems[9], navItems[10]] },
 ];
 
 export function AppShell({ children, toast }: { children: ReactNode; toast: string }) {
@@ -64,12 +65,6 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
 
   return (
     <div className="app-shell" data-testid="app-shell-root">
-      {/* Toast notification */}
-      {toast && (
-        <div className="toast panel" role="status" aria-live="polite">
-          <Check size={16} /><span>{toast}</span>
-        </div>
-      )}
 
       {/* Sidebar */}
       <aside className={`sidebar ${mobileNav ? 'sidebar-open' : ''}`}>
@@ -166,7 +161,7 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
           </button>
           <div className="crumb mono" data-tauri-drag-region>
             <span className="crumb-signal" />
-            CORTEX / {location === '/' ? 'OVERVIEW' : location.startsWith('/project/') ? 'PROJECT HUB' : location === '/friends' ? 'FRIENDS HUB' : location === '/team' ? 'TEAM HUB' : location.slice(1).toUpperCase()}
+            CORTEX / {location === '/' ? t('app.breadcrumbOverview') : location.startsWith('/project/') ? t('app.breadcrumbProjectHub') : location === '/friends' ? t('app.breadcrumbFriendsHub') : location === '/team' ? t('app.breadcrumbTeamHub') : location.slice(1).toUpperCase()}
           </div>
           
           <div data-tauri-drag-region style={{ flex: 1, height: '100%', minWidth: '20px' }} />
@@ -193,7 +188,7 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
 
       {/* Simple, tiny version label in bottom right corner: no box, no light */}
       <div className="bottom-corner-version mono" data-testid="text-corner-version">
-        {locale === 'ar' ? 'اصدار تجريبي 0.3.12' : 'Beta 0.3.12'}
+        {t('app.betaVersion')}
       </div>
 
       {searchOpen && (
@@ -216,6 +211,14 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Sleek Floating Toast Notification (Capsule Island) */}
+      {toast && (
+        <div className="cortex-toast" role="status" aria-live="polite">
+          <Check size={14} className="cortex-toast-icon" />
+          <span>{toast}</span>
         </div>
       )}
     </div>

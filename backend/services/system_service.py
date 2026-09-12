@@ -73,15 +73,20 @@ def get_system_info_data() -> Dict[str, Any]:
 
 def pick_directory_dialog() -> Dict[str, Any]:
     try:
-        cmd = [
-            "powershell",
-            "-NoProfile",
-            "-Command",
-            "[System.Reflection.Assembly]::LoadWithPartialName('System.windows.forms') | Out-Null; "
+        ps_script = (
+            "$ErrorActionPreference = 'Stop'; "
+            "Add-Type -AssemblyName System.Windows.Forms; "
             "$f = New-Object System.Windows.Forms.FolderBrowserDialog; "
             "$f.Description = 'Select CortexOS Projects Directory'; "
             "$f.ShowNewFolderButton = $true; "
-            "if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $f.SelectedPath }"
+            "if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { Write-Output $f.SelectedPath }"
+        )
+        cmd = [
+            "powershell",
+            "-NoProfile",
+            "-STA",
+            "-Command",
+            ps_script
         ]
         res = subprocess.run(
             cmd,
@@ -91,7 +96,7 @@ def pick_directory_dialog() -> Dict[str, Any]:
             creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
         )
         path = res.stdout.strip()
-        if path:
+        if path and os.path.isdir(path):
             return {"path": path, "canceled": False}
         return {"path": "", "canceled": True}
     except Exception as e:
@@ -166,7 +171,7 @@ def get_hardware_details_data() -> Dict[str, Any]:
     except Exception:
         pass
     if not gpus:
-        gpus = ["Intel(R) Arc(TM) Graphics", "NVIDIA GeForce RTX 3050 6GB Laptop GPU"]
+        gpus = ["Unknown GPU"]
 
     uptime_seconds = int(time.time() - boot_time)
     hours = uptime_seconds // 3600

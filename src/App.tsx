@@ -10,11 +10,14 @@ import { usePersistent } from '@/hooks/use-persistent';
 import { useWindowPersistence } from '@/hooks/use-window-persistence';
 import { DesktopDialogProvider } from '@/components/ui/desktop-dialog';
 import { Onboarding } from '@/components/onboarding';
+import { isTauri, invoke } from '@/lib/tauri';
+import { setDaemonToken } from '@/lib/api-client';
 import type { MotionMode } from '@/pages/settings';
 
 import Overview from '@/pages/overview';
 import Projects from '@/pages/projects';
 import Study from '@/pages/study';
+import CortexAiPage from '@/pages/cortex-ai';
 import Games from '@/pages/games';
 import Media from '@/pages/media';
 import Janitor from '@/pages/janitor';
@@ -44,9 +47,23 @@ function App() {
     }
   }, [theme, motion]);
 
-  // Silent notification handler - no annoying bottom blue toasts
-  const notify = (_message: string) => {
-    // Quiet operation
+  // Securely retrieve in-memory daemon token from Tauri backend
+  useEffect(() => {
+    if (isTauri()) {
+      invoke<string>('get_daemon_token')
+        .then((res) => {
+          if (res && res.value) setDaemonToken(res.value);
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  // Responsive notification handler with auto-hide
+  const notify = (message: string) => {
+    if (!message) return;
+    setToast(message);
+    window.clearTimeout((window as any)._cortexToastTimer);
+    (window as any)._cortexToastTimer = window.setTimeout(() => setToast(''), 3200);
   };
 
   return (
@@ -75,6 +92,7 @@ function App() {
                       <Route path="/collaboration"><TeamCollaborationPage notify={notify} /></Route>
                       <Route path="/friends"><FriendsPage /></Route>
                       <Route path="/study"><Study notify={notify} /></Route>
+                      <Route path="/cortex-ai"><CortexAiPage notify={notify} /></Route>
                       <Route path="/games"><Games notify={notify} /></Route>
                       <Route path="/media"><Media notify={notify} /></Route>
                       <Route path="/janitor"><Janitor notify={notify} /></Route>

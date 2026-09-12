@@ -10,9 +10,17 @@ from backend.models.schemas import (
     QuizRequest,
     QuizResponse,
     FlashcardsRequest,
-    FlashcardsResponse
+    FlashcardsResponse,
+    CortexChatRequest,
+    CortexChatResponse
 )
-from backend.services.ai_service import summarize_text, explain_project_outside, generate_quiz, generate_flashcards
+from backend.services.ai_service import (
+    summarize_text,
+    explain_project_outside,
+    generate_quiz,
+    generate_flashcards,
+    synthesize_cortex_chat
+)
 from backend.services.project_scanner import detect_project_stack
 from backend.services.scaffolder import (
     STARTER_TEMPLATES,
@@ -21,6 +29,10 @@ from backend.services.scaffolder import (
 )
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
+
+@router.post("/cortex-chat", response_model=CortexChatResponse)
+async def cortex_chat_endpoint(req: CortexChatRequest):
+    return synthesize_cortex_chat(req)
 
 @router.post("/summarize", response_model=SummarizeResponse)
 async def summarize(req: SummarizeRequest):
@@ -105,7 +117,7 @@ async def scaffold_project(req: ScaffoldProjectRequest):
 
 @router.post("/quiz", response_model=QuizResponse)
 async def quiz_endpoint(req: QuizRequest):
-    res = generate_quiz(req.text, req.provider)
+    res = generate_quiz(req.text, req.provider, count=req.count, difficulty=req.difficulty)
     return res
 
 @router.post("/flashcards", response_model=FlashcardsResponse)

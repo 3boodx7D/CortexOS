@@ -77,7 +77,7 @@ def save_cortex_backup(backup_dir: str, payload_data: Dict[str, Any]) -> Dict[st
     full_path = os.path.join(abs_dir, filename)
 
     envelope = {
-        "cortex_version": "0.3.12",
+        "cortex_version": "0.3.20",
         "created_at": datetime.now().isoformat(),
         "timestamp_formatted": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "payload": payload_data
@@ -313,7 +313,7 @@ def create_project_zip_snapshot(
     except Exception as e:
         if os.path.exists(zip_filepath):
             try: os.remove(zip_filepath)
-            except: pass
+            except Exception: pass
         return {"ok": False, "error": str(e)}
 
 def list_project_zip_snapshots(project_path: str, backup_dir: str = "") -> Dict[str, Any]:
