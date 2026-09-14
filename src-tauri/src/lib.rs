@@ -32,6 +32,27 @@ fn get_daemon_token(state: State<'_, DaemonState>) -> String {
     state.token.clone()
 }
 
+#[tauri::command]
+fn prepare_for_update(state: State<'_, DaemonState>) {
+    if let Ok(mut lock) = state.process.lock() {
+        if let Some(mut child) = lock.take() {
+            let _ = child.kill();
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        let _ = std::process::Command::new("taskkill")
+            .args(["/F", "/IM", "cortex-backend.exe", "/T"])
+            .creation_flags(0x08000000)
+            .status();
+        let _ = std::process::Command::new("taskkill")
+            .args(["/F", "/IM", "cortex-backend-x86_64-pc-windows-msvc.exe", "/T"])
+            .creation_flags(0x08000000)
+            .status();
+    }
+}
+
 #[derive(Serialize, Clone)]
 pub struct MemoryInfo {
     total_gb: f64,
@@ -173,7 +194,7 @@ pub fn run() {
             app.handle().plugin(tauri_plugin_process::init())?;
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_system_info, get_daemon_token])
+        .invoke_handler(tauri::generate_handler![get_system_info, get_daemon_token, prepare_for_update])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -127,10 +127,18 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
 
       setStatus('downloaded');
 
-      // Brief delay so the user sees the 100% complete state before the app exits to installer
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      // Cleanly kill the background backend daemon so Windows file lock doesn't block NSIS extraction
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('prepare_for_update');
+      } catch (e) {
+        console.warn('[CortexUpdater] prepare_for_update fallback:', e);
+      }
 
-      // Step 2: On Windows, install exits the app and launches the small rectangular installer window!
+      // Small grace delay for OS to fully release file locks
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Step 2: On Windows, install exits the app and launches the installer
       await update.install({ restartAfterInstall: true });
     } catch (err: any) {
       console.error('[CortexUpdater] Download/Install error:', err);
@@ -143,6 +151,13 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
   const installAndRelaunch = useCallback(async () => {
     const update = updateRef.current;
     if (!update || !isTauri()) return;
+
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('prepare_for_update');
+    } catch (e) {}
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
 
     try {
       await update.install({ restartAfterInstall: true });
