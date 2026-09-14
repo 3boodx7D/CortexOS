@@ -23,7 +23,7 @@
     "breadcrumbProjectHub": "PROJECT HUB",
     "breadcrumbFriendsHub": "FRIENDS HUB",
     "breadcrumbTeamHub": "TEAM HUB",
-    "betaVersion": "Beta 0.3.20"
+    "betaLabel": "Beta"
   },
   "nav": {
     "workspace": "WORKSPACE",
@@ -564,10 +564,10 @@
     "about": {
       "title": "System & Version",
       "desc": "CortexOS executive neural cockpit for workspace and study orchestration.",
-      "version": "Beta 0.3.20",
+      "betaBadge": "Beta",
       "versionLabel": "Application Version",
       "channel": "Release Channel",
-      "channelValue": "Public Preview / Beta 0.3",
+      "channelValue": "Public Preview",
       "architecture": "Architecture",
       "architectureValue": "Modular Clean Architecture (TypeScript + React Client)",
       "cluster": "Database Cluster",

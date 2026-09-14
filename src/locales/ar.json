@@ -23,7 +23,7 @@
     "breadcrumbProjectHub": "مركز المشروع",
     "breadcrumbFriendsHub": "مركز الأصدقاء",
     "breadcrumbTeamHub": "مركز الفريق",
-    "betaVersion": "إصدار تجريبي 0.3.20"
+    "betaLabel": "إصدار تجريبي"
   },
   "nav": {
     "workspace": "مساحة العمل",
@@ -564,10 +564,10 @@
     "about": {
       "title": "حول النظام والإصدار",
       "desc": "معلومات البنية التحتية، الإصدار التجريبي، والحالة التشغيلية العامة.",
-      "version": "اصدار تجريبي 0.3.20",
+      "betaBadge": "إصدار تجريبي",
       "versionLabel": "إصدار التطبيق الحالي",
       "channel": "قناة الإطلاق",
-      "channelValue": "الإصدار التجريبي العام (Beta 0.3)",
+      "channelValue": "الإصدار التجريبي العام",
       "architecture": "المعمارية",
       "architectureValue": "معمارية معيارية حديثة (TypeScript + React Client)",
       "cluster": "عنقود البيانات",

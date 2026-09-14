@@ -15,6 +15,8 @@ import { pickDirectory } from '@/lib/tauri';
 import { AccountSettingsTab } from '@/components/settings/account-settings-tab';
 import { apiGet, apiPost } from '@/lib/api-client';
 import { useUpdater } from '@/hooks/use-updater';
+import { NeuralLoadingView } from '@/components/ui/neural-loading-view';
+import pkg from '../../package.json';
 
 export type MotionMode = 'minimal' | 'cinematic';
 
@@ -46,6 +48,7 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
 
   // Updater hook
   const updater = useUpdater();
+  const [showNeuralOverlay, setShowNeuralOverlay] = useState(false);
 
   // Projects Vault & Dev Engine Settings
   const [defaultIde, setDefaultIde] = usePersistent<string>('cortex-default-ide', 'antigravity');
@@ -1104,18 +1107,18 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
             <img src="/logo.png" alt="CortexOS Logo" className="about-logo-img" />
             <div className="about-version-chip mono">
               <span className="pulse-dot-green" />
-              <strong>{t('settings.about.version')}</strong>
+              <strong>{t('settings.about.betaBadge')} {pkg.version}</strong>
             </div>
           </div>
 
           <div className="about-grid">
             <div className="about-item">
               <small>{t('settings.about.versionLabel')}</small>
-              <b className="mono">0.3.20</b>
+              <b className="mono">{pkg.version}</b>
             </div>
             <div className="about-item">
               <small>{t('settings.about.channel')}</small>
-              <b>{t('settings.about.channelValue')}</b>
+              <b>{t('settings.about.channelValue')} (v{pkg.version})</b>
             </div>
             <div className="about-item">
               <small>{t('settings.about.architecture')}</small>
@@ -1252,7 +1255,10 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
             {updater.status === 'available' && (
               <button
                 className="btn-accent"
-                onClick={() => updater.downloadAndInstall()}
+                onClick={() => {
+                  setShowNeuralOverlay(true);
+                  updater.downloadAndInstall();
+                }}
                 data-tauri-drag-region="false"
                 style={{ fontSize: 12, padding: '7px 14px', gap: 6 }}
               >
@@ -1404,6 +1410,19 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
           </div>
         </section>
       </div>
+
+      {showNeuralOverlay && (updater.status === 'downloading' || updater.status === 'downloaded') && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'hsl(var(--background))' }}>
+          <NeuralLoadingView
+            mode="downloading"
+            progressPercent={updater.progressPercent}
+            downloadedBytes={updater.downloadedBytes}
+            totalBytes={updater.totalBytes}
+            isComplete={updater.status === 'downloaded'}
+            onRestart={() => updater.relaunchApp()}
+          />
+        </div>
+      )}
     </div>
   );
 }

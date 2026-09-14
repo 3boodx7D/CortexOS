@@ -9,6 +9,7 @@ import { useTranslation } from '@/lib/i18n';
 import { signOut } from '@/lib/supabase';
 import { useUserContext } from '@/lib/user-store';
 import { WindowControls } from '@/components/window-controls';
+import pkg from '../../package.json';
 
 const navItems = [
   { href: '/overview', labelKey: 'nav.overview', icon: LayoutDashboard },
@@ -188,7 +189,7 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
 
       {/* Simple, tiny version label in bottom right corner: no box, no light */}
       <div className="bottom-corner-version mono" data-testid="text-corner-version">
-        {t('app.betaVersion')}
+        {t('app.betaLabel')} {pkg.version}
       </div>
 
       {searchOpen && (
