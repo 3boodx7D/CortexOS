@@ -3,12 +3,13 @@ import { Link, useLocation } from 'wouter';
 import {
   Crown, BookOpen, BrainCircuit, CalendarClock, Check, ChevronRight, Command,
   FolderKanban, Gamepad2, Headphones, LayoutDashboard, LogOut, Menu,
-  Search, Settings2, Trash2, X, Cpu, Users, UserPlus
+  Search, Settings2, Trash2, X, Cpu, Users, UserPlus, Download, Loader2, RotateCw
 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { signOut } from '@/lib/supabase';
 import { useUserContext } from '@/lib/user-store';
 import { WindowControls } from '@/components/window-controls';
+import { useUpdater } from '@/lib/updater-context';
 import pkg from '../../package.json';
 
 const navItems = [
@@ -34,6 +35,7 @@ const navGroups = [
 
 export function AppShell({ children, toast }: { children: ReactNode; toast: string }) {
   const { t, locale } = useTranslation();
+  const updater = useUpdater();
   const { displayName, email, avatarChar, avatarUrl, isOwner } = useUserContext();
   const [location, setLocation] = useLocation();
   const [mobileNav, setMobileNav] = useState(false);
@@ -168,6 +170,52 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
           <div data-tauri-drag-region style={{ flex: 1, height: '100%', minWidth: '20px' }} />
 
           <div className="topbar-actions" data-tauri-drag-region="false">
+            {updater.status === 'available' && (
+              <button
+                type="button"
+                className="topbar-update-btn"
+                onClick={() => updater.startUpdate()}
+                title={`${t('settings.updater.available')} - ${updater.updateInfo?.version}`}
+                data-testid="button-topbar-update"
+              >
+                <span className="update-pulse-dot" />
+                <Download size={13} className="text-cyan animate-pulse" />
+                <span className="topbar-update-text">
+                  {t('settings.updater.updateNow')} <span className="mono">{updater.updateInfo?.version}</span>
+                </span>
+              </button>
+            )}
+
+            {updater.status === 'downloading' && (
+              <button
+                type="button"
+                className="topbar-update-btn is-downloading"
+                onClick={() => updater.setShowOverlay(true)}
+                title={t('settings.updater.downloading')}
+                data-testid="button-topbar-update-progress"
+              >
+                <Loader2 size={13} className="text-cyan animate-spin" />
+                <span className="topbar-update-text">
+                  {updater.progressPercent}%
+                </span>
+              </button>
+            )}
+
+            {updater.status === 'downloaded' && (
+              <button
+                type="button"
+                className="topbar-update-btn is-ready"
+                onClick={() => updater.installAndRelaunch()}
+                title={t('settings.updater.downloadComplete')}
+                data-testid="button-topbar-update-install"
+              >
+                <RotateCw size={13} className="text-cyan" />
+                <span className="topbar-update-text">
+                  {t('settings.updater.installNow')}
+                </span>
+              </button>
+            )}
+
             <button className="search-trigger" onClick={() => setSearchOpen(true)} data-testid="button-command-search">
               <Search size={14} /><span>{t('app.commandSearch')}</span><kbd>Ctrl+K</kbd>
             </button>

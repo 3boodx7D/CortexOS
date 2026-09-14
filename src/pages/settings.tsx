@@ -15,7 +15,6 @@ import { pickDirectory } from '@/lib/tauri';
 import { AccountSettingsTab } from '@/components/settings/account-settings-tab';
 import { apiGet, apiPost } from '@/lib/api-client';
 import { useUpdater } from '@/hooks/use-updater';
-import { NeuralLoadingView } from '@/components/ui/neural-loading-view';
 import pkg from '../../package.json';
 
 export type MotionMode = 'minimal' | 'cinematic';
@@ -48,7 +47,6 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
 
   // Updater hook
   const updater = useUpdater();
-  const [showNeuralOverlay, setShowNeuralOverlay] = useState(false);
 
   // Projects Vault & Dev Engine Settings
   const [defaultIde, setDefaultIde] = usePersistent<string>('cortex-default-ide', 'antigravity');
@@ -1244,7 +1242,6 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
               <button
                 className="btn-outline"
                 onClick={() => updater.checkForUpdates(true)}
-                disabled={updater.status === 'checking' as string}
                 data-tauri-drag-region="false"
                 style={{ fontSize: 12, padding: '7px 14px', gap: 6 }}
               >
@@ -1255,10 +1252,7 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
             {updater.status === 'available' && (
               <button
                 className="btn-accent"
-                onClick={() => {
-                  setShowNeuralOverlay(true);
-                  updater.downloadAndInstall();
-                }}
+                onClick={() => updater.startUpdate()}
                 data-tauri-drag-region="false"
                 style={{ fontSize: 12, padding: '7px 14px', gap: 6 }}
               >
@@ -1269,7 +1263,7 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
             {updater.status === 'downloaded' && (
               <button
                 className="btn-accent"
-                onClick={() => updater.relaunchApp()}
+                onClick={() => updater.installAndRelaunch()}
                 data-tauri-drag-region="false"
                 style={{ fontSize: 12, padding: '7px 14px', gap: 6 }}
               >
@@ -1410,19 +1404,6 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
           </div>
         </section>
       </div>
-
-      {showNeuralOverlay && (updater.status === 'downloading' || updater.status === 'downloaded') && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'hsl(var(--background))' }}>
-          <NeuralLoadingView
-            mode="downloading"
-            progressPercent={updater.progressPercent}
-            downloadedBytes={updater.downloadedBytes}
-            totalBytes={updater.totalBytes}
-            isComplete={updater.status === 'downloaded'}
-            onRestart={() => updater.relaunchApp()}
-          />
-        </div>
-      )}
     </div>
   );
 }

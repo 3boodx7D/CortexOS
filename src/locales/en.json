@@ -596,7 +596,9 @@
       "retry": "Retry Connection",
       "error": "Update check failed",
       "noRelease": "No releases published on GitHub yet (404 Not Found). Build and upload a release to enable auto-updates.",
-      "continueLocal": "Continue Locally"
+      "continueLocal": "Continue Locally",
+      "updateNow": "Update to",
+      "installNow": "Install & Restart"
     }
   },
   "auth": {

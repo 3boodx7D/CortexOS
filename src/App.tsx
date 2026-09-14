@@ -12,6 +12,7 @@ import { DesktopDialogProvider } from '@/components/ui/desktop-dialog';
 import { Onboarding } from '@/components/onboarding';
 import { isTauri, invoke } from '@/lib/tauri';
 import { setDaemonToken } from '@/lib/api-client';
+import { UpdaterProvider } from '@/lib/updater-context';
 import type { MotionMode } from '@/pages/settings';
 
 import Overview from '@/pages/overview';
@@ -71,41 +72,43 @@ function App() {
       <ErrorBoundary>
         <TooltipProvider>
           <I18nProvider>
-            <DesktopDialogProvider>
-              <AuthGate>
-                {!onboardingDone ? (
-                  <Onboarding
-                    theme={theme}
-                    motionMode={motion}
-                    onThemeChange={setTheme}
-                    onMotionChange={setMotion}
-                    onComplete={() => setOnboardingDone(true)}
-                  />
-                ) : (
-                  <AppShell toast={toast}>
-                    <Switch>
-                      <Route path="/"><Overview notify={notify} /></Route>
-                      <Route path="/overview"><Overview notify={notify} /></Route>
-                      <Route path="/projects"><Projects notify={notify} /></Route>
-                      <Route path="/project/:id"><ProjectDetailsPage notify={notify} /></Route>
-                      <Route path="/team"><TeamCollaborationPage notify={notify} /></Route>
-                      <Route path="/collaboration"><TeamCollaborationPage notify={notify} /></Route>
-                      <Route path="/friends"><FriendsPage /></Route>
-                      <Route path="/study"><Study notify={notify} /></Route>
-                      <Route path="/cortex-ai"><CortexAiPage notify={notify} /></Route>
-                      <Route path="/games"><Games notify={notify} /></Route>
-                      <Route path="/media"><Media notify={notify} /></Route>
-                      <Route path="/janitor"><Janitor notify={notify} /></Route>
-                      <Route path="/my-pc"><MyPc /></Route>
-                      <Route path="/deadlines"><Deadlines notify={notify} /></Route>
-                      <Route path="/settings"><Settings notify={notify} /></Route>
-                      <Route path="/owner"><OwnerCockpit /></Route>
-                      <Route><NotFound /></Route>
-                    </Switch>
-                  </AppShell>
-                )}
-              </AuthGate>
-            </DesktopDialogProvider>
+            <UpdaterProvider>
+              <DesktopDialogProvider>
+                <AuthGate>
+                  {!onboardingDone ? (
+                    <Onboarding
+                      theme={theme}
+                      motionMode={motion}
+                      onThemeChange={setTheme}
+                      onMotionChange={setMotion}
+                      onComplete={() => setOnboardingDone(true)}
+                    />
+                  ) : (
+                    <AppShell toast={toast}>
+                      <Switch>
+                        <Route path="/"><Overview notify={notify} /></Route>
+                        <Route path="/overview"><Overview notify={notify} /></Route>
+                        <Route path="/projects"><Projects notify={notify} /></Route>
+                        <Route path="/project/:id"><ProjectDetailsPage notify={notify} /></Route>
+                        <Route path="/team"><TeamCollaborationPage notify={notify} /></Route>
+                        <Route path="/collaboration"><TeamCollaborationPage notify={notify} /></Route>
+                        <Route path="/friends"><FriendsPage /></Route>
+                        <Route path="/study"><Study notify={notify} /></Route>
+                        <Route path="/cortex-ai"><CortexAiPage notify={notify} /></Route>
+                        <Route path="/games"><Games notify={notify} /></Route>
+                        <Route path="/media"><Media notify={notify} /></Route>
+                        <Route path="/janitor"><Janitor notify={notify} /></Route>
+                        <Route path="/my-pc"><MyPc /></Route>
+                        <Route path="/deadlines"><Deadlines notify={notify} /></Route>
+                        <Route path="/settings"><Settings notify={notify} /></Route>
+                        <Route path="/owner"><OwnerCockpit /></Route>
+                        <Route><NotFound /></Route>
+                      </Switch>
+                    </AppShell>
+                  )}
+                </AuthGate>
+              </DesktopDialogProvider>
+            </UpdaterProvider>
           </I18nProvider>
           <Toaster />
         </TooltipProvider>
