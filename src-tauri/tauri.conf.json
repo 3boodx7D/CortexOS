@@ -48,7 +48,8 @@
         "installerIcon": "icons/icon.ico",
         "headerImage": "nsis/header.bmp",
         "sidebarImage": "nsis/sidebar.bmp",
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "installerHooks": "nsis/hooks.nsh"
       }
     },
     "android": {
@@ -60,7 +61,10 @@
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZBNDAwOEFEREIzMzlENzYKUldSMm5UUGJyUWhBYWhhSWd4Q1hmLzArMGlocEF2dk9vNEpXOVZkZmNFaE91ODNzbHZkemZqMHEK",
       "endpoints": [
         "https://github.com/3boodx7D/CortexOS/releases/latest/download/latest.json"
-      ]
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }
