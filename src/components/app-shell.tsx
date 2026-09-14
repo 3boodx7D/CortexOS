@@ -10,6 +10,8 @@ import { signOut } from '@/lib/supabase';
 import { useUserContext } from '@/lib/user-store';
 import { WindowControls } from '@/components/window-controls';
 import { useUpdater } from '@/lib/updater-context';
+import { isTauri, invoke } from '@/lib/tauri';
+import { apiGet } from '@/lib/api-client';
 import pkg from '../../package.json';
 
 const navItems = [
@@ -40,6 +42,36 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
   const [location, setLocation] = useLocation();
   const [mobileNav, setMobileNav] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [cpuUsage, setCpuUsage] = useState<number | null>(null);
+
+  // Live hardware telemetry poll (every 3s) for topbar quick indicator
+  useEffect(() => {
+    let mounted = true;
+    const fetchCpu = async () => {
+      if (isTauri()) {
+        try {
+          const res = await invoke<any>('get_system_info');
+          if (mounted && res?.value?.cpu?.usage !== undefined) {
+            setCpuUsage(Math.round(res.value.cpu.usage));
+            return;
+          }
+        } catch {}
+      }
+      try {
+        const res = await apiGet<any>('/api/system/telemetry');
+        if (mounted && res?.cpu?.loadPercent !== undefined) {
+          setCpuUsage(Math.round(res.cpu.loadPercent));
+        }
+      } catch {}
+    };
+
+    fetchCpu();
+    const interval = window.setInterval(fetchCpu, 3000);
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+    };
+  }, []);
 
   // Internal auto-hiding scrollbar: only shows when scrolling down
   const [isScrolling, setIsScrolling] = useState(false);
@@ -214,6 +246,18 @@ export function AppShell({ children, toast }: { children: ReactNode; toast: stri
                   {t('settings.updater.installNow')}
                 </span>
               </button>
+            )}
+
+            {cpuUsage !== null && (
+              <Link
+                href="/my-pc"
+                className="topbar-telemetry-chip"
+                title={locale === 'ar' ? `استهلاك المعالج: ${cpuUsage}% (انقر للعتاد)` : `CPU Load: ${cpuUsage}% (Click for telemetry)`}
+                data-testid="link-topbar-telemetry"
+              >
+                <Cpu size={12} className="text-cyan" />
+                <span className="mono">{cpuUsage}%</span>
+              </Link>
             )}
 
             <button className="search-trigger" onClick={() => setSearchOpen(true)} data-testid="button-command-search">

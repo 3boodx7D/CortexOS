@@ -122,12 +122,16 @@ if (!process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD && process.env.TAURI_SIGNING
 execSync('pnpm tauri build', { cwd: ROOT_DIR, stdio: 'inherit', shell: true, env: process.env });
 console.log(`${green('✓')} Tauri bundle complete.`);
 
-// 10. Locate generated installer and copy to dist-installer with distinguishable versioned name
+// 10. Locate generated installer and copy to version-specific folder in dist-installer
 const nsisDir = path.join(ROOT_DIR, 'src-tauri', 'target', 'release', 'bundle', 'nsis');
 const distInstallerDir = path.join(ROOT_DIR, 'dist-installer');
+const versionFolder = path.join(distInstallerDir, `v${newVersion}`);
 
 if (!fs.existsSync(distInstallerDir)) {
   fs.mkdirSync(distInstallerDir, { recursive: true });
+}
+if (!fs.existsSync(versionFolder)) {
+  fs.mkdirSync(versionFolder, { recursive: true });
 }
 
 const nsisFiles = fs.readdirSync(nsisDir).filter(f => f.endsWith('.exe') && !f.includes('nsis-'));
@@ -143,17 +147,18 @@ const sourceInstallerPath = path.join(nsisDir, sourceInstaller);
 const versionedSetupName = `CortexOS-Setup-v${newVersion}.exe`;
 const latestSetupName = `CortexOS-Setup-Latest.exe`;
 
-const targetVersionedPath = path.join(distInstallerDir, versionedSetupName);
+// Target paths: inside version folder AND in root for latest
+const targetInVersionFolder = path.join(versionFolder, versionedSetupName);
 const targetLatestPath = path.join(distInstallerDir, latestSetupName);
 
-fs.copyFileSync(sourceInstallerPath, targetVersionedPath);
+fs.copyFileSync(sourceInstallerPath, targetInVersionFolder);
 fs.copyFileSync(sourceInstallerPath, targetLatestPath);
 
-const stats = fs.statSync(targetVersionedPath);
+const stats = fs.statSync(targetInVersionFolder);
 const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
 
 // 11. Copy updater artifacts (signature + latest.json) for Tauri v2 auto-update
-console.log(`\n${cyan('•')} Preparing updater artifacts...`);
+console.log(`\n${cyan('•')} Preparing updater artifacts in ${bold(`v${newVersion}`)} folder...`);
 const allSigFiles = fs.readdirSync(nsisDir).filter(f => f.endsWith('.sig'));
 
 let updaterReady = false;
@@ -162,9 +167,9 @@ if (allSigFiles.length > 0) {
   const sigFile = allSigFiles.find(f => f.includes(newVersion)) || allSigFiles[0];
   const sigContent = fs.readFileSync(path.join(nsisDir, sigFile), 'utf8').trim();
   
-  // Copy the signature file
+  // Save signature inside version folder
   const targetSigName = `${versionedSetupName}.sig`;
-  fs.writeFileSync(path.join(distInstallerDir, targetSigName), sigContent, 'utf8');
+  fs.writeFileSync(path.join(versionFolder, targetSigName), sigContent, 'utf8');
   console.log(`${green('✓')} Saved signature -> ${bold(targetSigName)}`);
 
   // Generate latest.json manifest
@@ -180,22 +185,55 @@ if (allSigFiles.length > 0) {
     }
   };
 
-  fs.writeFileSync(path.join(distInstallerDir, 'latest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8');
-  console.log(`${green('✓')} Generated ${bold('latest.json')} manifest for GitHub Releases.`);
+  const manifestStr = JSON.stringify(manifest, null, 2) + '\n';
+  // Write in version folder AND in dist-installer root
+  fs.writeFileSync(path.join(versionFolder, 'latest.json'), manifestStr, 'utf8');
+  fs.writeFileSync(path.join(distInstallerDir, 'latest.json'), manifestStr, 'utf8');
+  console.log(`${green('✓')} Generated ${bold('latest.json')} manifest inside ${bold(`v${newVersion}`)}.`);
   updaterReady = true;
 } else {
   console.log(`${yellow('!')} No signature file found. Set TAURI_SIGNING_PRIVATE_KEY to enable updater signing.`);
+}
+
+// 12. Clean up any loose versioned files in dist-installer root into their respective folders
+try {
+  const rootFiles = fs.readdirSync(distInstallerDir);
+  for (const f of rootFiles) {
+    const full = path.join(distInstallerDir, f);
+    if (fs.statSync(full).isFile() && f.startsWith('CortexOS-Setup-v')) {
+      const match = f.match(/v(\d+\.\d+\.\d+)/);
+      if (match) {
+        const vDir = path.join(distInstallerDir, `v${match[1]}`);
+        if (!fs.existsSync(vDir)) fs.mkdirSync(vDir, { recursive: true });
+        fs.renameSync(full, path.join(vDir, f));
+      }
+    }
+  }
+} catch {}
+
+// 13. Auto Git Commit & Push
+try {
+  console.log(`\n${cyan('•')} Syncing release changes to Git...`);
+  execSync('git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock', { cwd: ROOT_DIR, stdio: 'ignore' });
+  execSync(`git commit -m "chore(release): bump to v${newVersion}"`, { cwd: ROOT_DIR, stdio: 'ignore' });
+  execSync('git push origin main', { cwd: ROOT_DIR, stdio: 'ignore' });
+  console.log(`${green('✓')} Git repo synced and pushed to GitHub main.`);
+} catch {
+  console.log(`${gray('•')} Git is already up to date.`);
 }
 
 console.log('\n' + green(bold('╔═════════════════════════════════════════════════════════════════════════╗')));
 console.log(green(bold('║                      ✨ BUILD & RELEASE SUCCESSFUL! ✨                   ║')));
 console.log(green(bold('╚═════════════════════════════════════════════════════════════════════════╝\n')));
 console.log(`${bold('📦 Release Version:')}     ${green(bold('v' + newVersion))}`);
-console.log(`${bold('📁 Versioned Installer:')} ${cyan(targetVersionedPath)}`);
-console.log(`${bold('🔗 Latest Link:')}         ${cyan(targetLatestPath)}`);
+console.log(`${bold('📁 Dedicated Folder:')}    ${cyan(versionFolder)}`);
 console.log(`${bold('⚖️ File Size:')}           ${yellow(sizeMB + ' MB')}\n`);
-console.log(gray(`Ready to distribute! You can give "${versionedSetupName}" directly to your friends.`));
-if (updaterReady) {
-  console.log(green(`Auto-update artifacts are ready. Upload latest.json + .nsis.zip + .sig to GitHub Releases.`));
-}
+console.log(gray(`Ready to publish! The 3 release files are waiting inside:`));
+console.log(cyan(`   ${versionFolder}\n`));
+
+// 14. Automatically open the folder in Windows Explorer
+try {
+  execSync(`explorer "${versionFolder}"`);
+  console.log(`${green('✓')} Opened release folder in Windows Explorer.`);
+} catch {}
 

@@ -3,7 +3,7 @@ import { Link } from 'wouter';
 import {
   Activity, ArrowUpRight, BookOpen, CalendarClock,
   Database, Disc3, FolderKanban, Gamepad2, Headphones, Power,
-  Zap, Monitor
+  Zap, Monitor, Check, Sparkles
 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { useUserPersistent } from '@/lib/user-store';
@@ -79,6 +79,8 @@ export default function Overview({ notify }: { notify: (msg: string) => void }) 
 
   const [focus, setFocus] = useUserPersistent('focus', false);
   const [turbo, setTurbo] = useUserPersistent('turbo', false);
+  const [lastSeenVersion, setLastSeenVersion] = usePersistent<string>('cortex-last-seen-version', '');
+  const showWhatsNew = lastSeenVersion !== '0.3.24';
 
   const getGreeting = () => {
     const hour = now.getHours();
@@ -98,6 +100,58 @@ export default function Overview({ notify }: { notify: (msg: string) => void }) 
 
   return (
     <div>
+      {showWhatsNew && (
+        <div
+          className="page-in"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            padding: '12px 18px',
+            marginBottom: 20,
+            borderRadius: 10,
+            border: '1px solid rgba(0, 175, 244, 0.35)',
+            background: 'rgba(0, 175, 244, 0.05)',
+          }}
+          data-testid="banner-whats-new"
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: 'rgba(0, 175, 244, 0.12)',
+              color: '#00aff4',
+              flexShrink: 0
+            }}>
+              <Sparkles size={16} />
+            </span>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 }}>
+                <span className="mono" style={{ color: '#00aff4' }}>{t('overview.whatsNewTag')}</span>
+                <span>{t('overview.whatsNewTitle')}</span>
+              </div>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: 'hsl(var(--muted-foreground))' }}>
+                {t('overview.whatsNewDesc')}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLastSeenVersion('0.3.24')}
+            className="btn-outline"
+            style={{ fontSize: 11, padding: '6px 12px', height: 30, gap: 5, flexShrink: 0 }}
+            data-testid="button-dismiss-whats-new"
+          >
+            <Check size={12} className="text-cyan" />
+            <span>{t('overview.dismiss')}</span>
+          </button>
+        </div>
+      )}
 
       <div className="section-title">
         <div>
