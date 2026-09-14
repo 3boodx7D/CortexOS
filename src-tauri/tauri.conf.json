@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "CortexOS",
-  "version": "0.3.20",
+  "version": "0.3.21",
   "identifier": "com.cortexos.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -26,12 +26,13 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:8000 https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' blob:"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:8000 https://*.supabase.co wss://*.supabase.co https://github.com https://*.github.com; img-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' blob:"
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "externalBin": [
       "binaries/cortex-backend"
     ],
@@ -52,6 +53,14 @@
     },
     "android": {
       "debugApplicationIdSuffix": ".debug"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY3QUYwNDYzMEJFMDg3QzAKUldUQWgrQUxZd1N2WjYxckJ4ZWJqQktZTGxETUJKNHp1NVgzenVrbVBLZ1phR0Z6U1g5b3Y5M1UK",
+      "endpoints": [
+        "https://github.com/3boodx7D/CortexOS/releases/latest/download/latest.json"
+      ]
     }
   }
 }

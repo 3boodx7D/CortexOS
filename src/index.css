@@ -2985,4 +2985,272 @@ html:not(.dark) .onboarding-wizard-panel,
   transform: none !important;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   NeuralLoadingView — Update / Offline / Checking Overlay
+   Built on .auth-gate-loading visual architecture
+   ══════════════════════════════════════════════════════════════ */
+
+.neural-loading-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 14px;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--background));
+  position: relative;
+  overflow: hidden;
+}
+
+.neural-status-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* ── Spinner ── */
+.neural-spinner {
+  animation: spin 1.2s linear infinite;
+}
+
+/* ── Neon Progress Bar ── */
+.neural-progress-track {
+  width: 280px;
+  height: 6px;
+  border-radius: 9999px;
+  background: hsl(var(--muted) / 0.3);
+  overflow: hidden;
+  position: relative;
+}
+
+.neural-progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 12px hsl(var(--primary) / 0.6), 0 0 24px hsl(var(--primary) / 0.3);
+  transition: width 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-motion="minimal"] .neural-progress-fill {
+  transition: none !important;
+  box-shadow: none !important;
+}
+
+.neural-progress-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 280px;
+}
+
+/* ── Download Complete Badge ── */
+.neural-complete-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+/* ── Restart Button (Wide Accent) ── */
+.neural-restart-btn {
+  min-width: 260px;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ── Offline Badge ── */
+.neural-offline-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.neural-offline-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.neural-retry-btn,
+.neural-continue-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+}
+
+.neural-retry-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── No pulse helper for minimal mode ── */
+.auth-logo-pulse.no-pulse .auth-logo-pulse-img {
+  animation: none !important;
+}
+
+/* ── Update Card in Settings ── */
+.updater-card {
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.updater-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.updater-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.updater-status-chip.up-to-date {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.updater-status-chip.available {
+  background: rgba(0, 175, 244, 0.1);
+  color: #00aff4;
+  border: 1px solid rgba(0, 175, 244, 0.2);
+}
+
+.updater-status-chip.offline {
+  background: rgba(245, 158, 11, 0.08);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.updater-status-chip.error {
+  background: rgba(244, 63, 94, 0.08);
+  color: #f43f5e;
+  border: 1px solid rgba(244, 63, 94, 0.2);
+}
+
+.updater-status-chip.checking {
+  background: rgba(0, 175, 244, 0.06);
+  color: hsl(var(--muted-foreground));
+  border: 1px solid rgba(63, 63, 70, 0.3);
+}
+
+.updater-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.updater-release-notes {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: hsl(var(--muted) / 0.15);
+  border: 1px solid hsl(var(--border));
+  font-size: 12px;
+  line-height: 1.6;
+  color: hsl(var(--muted-foreground));
+  max-height: 120px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+.updater-inline-progress {
+  width: 100%;
+  height: 5px;
+  border-radius: 9999px;
+  background: hsl(var(--muted) / 0.3);
+  overflow: hidden;
+}
+
+.updater-inline-progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 10px hsl(var(--primary) / 0.5);
+  transition: width 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-motion="minimal"] .updater-inline-progress-fill {
+  transition: none !important;
+  box-shadow: none !important;
+}
+
+.updater-progress-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.updater-auto-check-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.updater-auto-check-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ── Light theme adjustments ── */
+[data-theme="light"] .neural-loading-view {
+  color: hsl(220 14% 40%);
+}
+
+[data-theme="light"] .updater-card {
+  background: #ffffff;
+  border-color: hsl(220 14% 88%);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="light"] .updater-release-notes {
+  background: hsl(220 14% 96%);
+  border-color: hsl(220 14% 88%);
+}
+
+/* ── Cinematic stagger for updater card in settings ── */
+[data-motion="cinematic"] .settings-tab-pane .updater-card {
+  animation: settings-item-cascade 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 35ms;
+}
+
+[data-motion="minimal"] .updater-card {
+  animation: none !important;
+}
 

@@ -100,7 +100,26 @@ console.log(`${green('✓')} Frontend build complete.`);
 
 // 9. Build Tauri NSIS Setup
 console.log(`\n${cyan('•')} Building native NSIS Setup Installer with Tauri...`);
-execSync('pnpm tauri build', { cwd: ROOT_DIR, stdio: 'inherit', shell: true });
+
+// Auto-detect private signing key if not set in environment
+if (!process.env.TAURI_SIGNING_PRIVATE_KEY) {
+  const localKeyPath = path.join(ROOT_DIR, '~', '.tauri', 'cortexos.key');
+  const homeKeyPath = path.join(process.env.USERPROFILE || process.env.HOME || '', '.tauri', 'cortexos.key');
+
+  if (fs.existsSync(localKeyPath)) {
+    process.env.TAURI_SIGNING_PRIVATE_KEY = fs.readFileSync(localKeyPath, 'utf8').trim();
+    console.log(`${green('✓')} Loaded signing key from ${gray(localKeyPath)}`);
+  } else if (fs.existsSync(homeKeyPath)) {
+    process.env.TAURI_SIGNING_PRIVATE_KEY = fs.readFileSync(homeKeyPath, 'utf8').trim();
+    console.log(`${green('✓')} Loaded signing key from ${gray(homeKeyPath)}`);
+  }
+}
+
+if (!process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD && process.env.TAURI_SIGNING_PRIVATE_KEY) {
+  process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD = process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '';
+}
+
+execSync('pnpm tauri build', { cwd: ROOT_DIR, stdio: 'inherit', shell: true, env: process.env });
 console.log(`${green('✓')} Tauri bundle complete.`);
 
 // 10. Locate generated installer and copy to dist-installer with distinguishable versioned name
@@ -133,6 +152,36 @@ fs.copyFileSync(sourceInstallerPath, targetLatestPath);
 const stats = fs.statSync(targetVersionedPath);
 const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
 
+// 11. Copy updater artifacts (signature + latest.json) for Tauri v2 auto-update
+console.log(`\n${cyan('•')} Preparing updater artifacts...`);
+const latestJsonPath = path.join(nsisDir, 'latest.json');
+const nsisZipFiles = fs.readdirSync(nsisDir).filter(f => f.endsWith('.nsis.zip'));
+const nsisSigFiles = fs.readdirSync(nsisDir).filter(f => f.endsWith('.nsis.zip.sig'));
+
+let updaterReady = false;
+
+if (fs.existsSync(latestJsonPath)) {
+  fs.copyFileSync(latestJsonPath, path.join(distInstallerDir, 'latest.json'));
+  console.log(`${green('✓')} Copied ${bold('latest.json')} to dist-installer.`);
+  updaterReady = true;
+}
+
+if (nsisZipFiles.length > 0) {
+  const zipSource = nsisZipFiles.find(f => f.includes(newVersion)) || nsisZipFiles[0];
+  fs.copyFileSync(path.join(nsisDir, zipSource), path.join(distInstallerDir, zipSource));
+  console.log(`${green('✓')} Copied ${bold(zipSource)} to dist-installer.`);
+}
+
+if (nsisSigFiles.length > 0) {
+  const sigSource = nsisSigFiles.find(f => f.includes(newVersion)) || nsisSigFiles[0];
+  fs.copyFileSync(path.join(nsisDir, sigSource), path.join(distInstallerDir, sigSource));
+  console.log(`${green('✓')} Copied ${bold(sigSource)} (signature) to dist-installer.`);
+}
+
+if (!updaterReady) {
+  console.log(`${yellow('!')} No latest.json found. Set TAURI_SIGNING_PRIVATE_KEY to enable updater signing.`);
+}
+
 console.log('\n' + green(bold('╔═════════════════════════════════════════════════════════════════════════╗')));
 console.log(green(bold('║                      ✨ BUILD & RELEASE SUCCESSFUL! ✨                   ║')));
 console.log(green(bold('╚═════════════════════════════════════════════════════════════════════════╝\n')));
@@ -141,3 +190,7 @@ console.log(`${bold('📁 Versioned Installer:')} ${cyan(targetVersionedPath)}`)
 console.log(`${bold('🔗 Latest Link:')}         ${cyan(targetLatestPath)}`);
 console.log(`${bold('⚖️ File Size:')}           ${yellow(sizeMB + ' MB')}\n`);
 console.log(gray(`Ready to distribute! You can give "${versionedSetupName}" directly to your friends.`));
+if (updaterReady) {
+  console.log(green(`Auto-update artifacts are ready. Upload latest.json + .nsis.zip + .sig to GitHub Releases.`));
+}
+

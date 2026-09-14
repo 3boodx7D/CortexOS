@@ -49,3 +49,7 @@ src-tauri/gen/schemas/
 src-tauri/binaries/
 dist-installer/
 
+# Tauri signing keys
+~/
+*.key
+

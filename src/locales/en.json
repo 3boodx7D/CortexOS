@@ -574,6 +574,29 @@
       "clusterValue": "Enterprise Cloud Sync Engine",
       "status": "System Status",
       "allNominal": "All systems nominal & active"
+    },
+    "updater": {
+      "title": "CortexOS Neural Updates",
+      "desc": "Automated binary distribution and zero-downtime updates.",
+      "checkBtn": "Check for Updates",
+      "checking": "Checking releases...",
+      "upToDate": "You are on the latest release",
+      "available": "New update available",
+      "newVersion": "New Version",
+      "releaseDate": "Release Date",
+      "releaseNotes": "Release Notes",
+      "downloadBtn": "Download & Install",
+      "downloading": "Downloading update package...",
+      "downloadComplete": "Update downloaded successfully",
+      "restartBtn": "Restart & Apply Update",
+      "autoCheck": "Automatically check for updates on startup",
+      "autoCheckDesc": "Verify binary integrity and discover new builds when CortexOS launches.",
+      "offline": "Offline Mode · Local engine active",
+      "offlineDesc": "Connect to the internet to check for new CortexOS releases.",
+      "retry": "Retry Connection",
+      "error": "Update check failed",
+      "noRelease": "No releases published on GitHub yet (404 Not Found). Build and upload a release to enable auto-updates.",
+      "continueLocal": "Continue Locally"
     }
   },
   "auth": {
@@ -969,5 +992,15 @@
     "online": "ONLINE",
     "session": "SESSION",
     "dismiss": "Dismiss"
+  },
+  "updater": {
+    "checkingServers": "Checking CortexOS update servers...",
+    "downloadingPackage": "Downloading neural update package...",
+    "downloadComplete": "Update downloaded · Ready to install",
+    "restartBtn": "Restart & Apply Update",
+    "offlineBadge": "Offline Mode",
+    "offlineLocalMsg": "Your local engine is fully operational. All projects, study vault, and hardware telemetry remain available. Connect to the internet to check for new CortexOS releases.",
+    "retry": "Retry Connection",
+    "continueLocal": "Continue Locally"
   }
 }

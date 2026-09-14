@@ -4,7 +4,8 @@ import {
   Check, ChevronRight, Cpu, Crown, Eye, EyeOff,
   HardDrive, Info, KeyRound, Lock, LogOut, Monitor, Moon, Palette, RefreshCw, Save, Shield, ShieldCheck, Sun,
   Upload, User as UserIcon, Zap, Globe, Sparkles, FolderKanban, Folder, FolderSearch, Camera, Trash2, Copy,
-  Code2, Terminal, BrainCircuit, Layers, GraduationCap, FolderOpen, ChevronDown, Headphones, Music
+  Code2, Terminal, BrainCircuit, Layers, GraduationCap, FolderOpen, ChevronDown, Headphones, Music,
+  Download, RotateCw, WifiOff, Loader2, CheckCircle2
 } from 'lucide-react';
 import { useTranslation, type Locale } from '@/lib/i18n';
 import { usePersistent } from '@/hooks/use-persistent';
@@ -13,6 +14,7 @@ import { useDesktopDialog } from '@/components/ui/desktop-dialog';
 import { pickDirectory } from '@/lib/tauri';
 import { AccountSettingsTab } from '@/components/settings/account-settings-tab';
 import { apiGet, apiPost } from '@/lib/api-client';
+import { useUpdater } from '@/hooks/use-updater';
 
 export type MotionMode = 'minimal' | 'cinematic';
 
@@ -40,6 +42,10 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
   const [runInBackground, setRunInBackground] = usePersistent<boolean>('cortex-pc-background', true);
   const [gpuAcceleration, setGpuAcceleration] = usePersistent<boolean>('cortex-pc-gpu', true);
   const [globalHotkeys, setGlobalHotkeys] = usePersistent<boolean>('cortex-pc-hotkeys', true);
+  const [autoUpdateCheck, setAutoUpdateCheck] = usePersistent<boolean>('cortex-auto-update-check', true);
+
+  // Updater hook
+  const updater = useUpdater();
 
   // Projects Vault & Dev Engine Settings
   const [defaultIde, setDefaultIde] = usePersistent<string>('cortex-default-ide', 'antigravity');
@@ -1124,6 +1130,164 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
           <div className="about-footer-status">
             <span className="tiny-led cyan" />
             <span>{t('settings.about.allNominal')}</span>
+          </div>
+        </div>
+
+        {/* ── CortexOS Update System Card ── */}
+        <div className="settings-section-heading" style={{ marginTop: 18 }}>
+          <span className="settings-icon"><Download size={16} /></span>
+          <div>
+            <h2>{t('settings.updater.title')}</h2>
+            <p>{t('settings.updater.desc')}</p>
+          </div>
+        </div>
+
+        <div className="updater-card">
+          {/* Status chip */}
+          <div className="updater-card-header">
+            {updater.status === 'upToDate' && (
+              <div className="updater-status-chip up-to-date">
+                <CheckCircle2 size={12} />
+                {t('settings.updater.upToDate')}
+              </div>
+            )}
+            {updater.status === 'available' && (
+              <div className="updater-status-chip available">
+                <Download size={12} />
+                {t('settings.updater.available')}
+              </div>
+            )}
+            {updater.status === 'offline' && (
+              <div className="updater-status-chip offline">
+                <WifiOff size={12} />
+                {t('settings.updater.offline')}
+              </div>
+            )}
+            {updater.status === 'error' && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
+                <div className="updater-status-chip error">
+                  {t('settings.updater.error')}
+                </div>
+                <small className="text-muted-foreground" style={{ fontSize: 11, maxWidth: 460, lineHeight: 1.5 }}>
+                  {updater.errorMessage && (updater.errorMessage.includes('404') || updater.errorMessage.toLowerCase().includes('release') || updater.errorMessage.toLowerCase().includes('remote') || updater.errorMessage.toLowerCase().includes('json'))
+                    ? t('settings.updater.noRelease')
+                    : updater.errorMessage}
+                </small>
+              </div>
+            )}
+            {(updater.status === 'checking') && (
+              <div className="updater-status-chip checking">
+                <Loader2 size={12} className="neural-spinner" />
+                {t('settings.updater.checking')}
+              </div>
+            )}
+            {(updater.status === 'idle') && (
+              <div className="updater-status-chip checking">
+                {t('settings.updater.checkBtn')}
+              </div>
+            )}
+          </div>
+
+          {/* Update info: version + release notes */}
+          {updater.status === 'available' && updater.updateInfo && (
+            <>
+              <div style={{ display: 'flex', gap: 16, fontSize: 12 }}>
+                <div>
+                  <small className="text-muted-foreground">{t('settings.updater.newVersion')}</small>
+                  <b className="mono block" style={{ color: '#00aff4' }}>{updater.updateInfo.version}</b>
+                </div>
+                {updater.updateInfo.date && (
+                  <div>
+                    <small className="text-muted-foreground">{t('settings.updater.releaseDate')}</small>
+                    <b className="block">{new Date(updater.updateInfo.date).toLocaleDateString()}</b>
+                  </div>
+                )}
+              </div>
+              {updater.updateInfo.body && (
+                <div>
+                  <small className="text-muted-foreground" style={{ fontSize: 11 }}>{t('settings.updater.releaseNotes')}</small>
+                  <div className="updater-release-notes">{updater.updateInfo.body}</div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Downloading progress */}
+          {updater.status === 'downloading' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div className="updater-inline-progress">
+                <div className="updater-inline-progress-fill" style={{ width: `${updater.progressPercent}%` }} />
+              </div>
+              <div className="updater-progress-label">
+                <span className="mono text-[hsl(var(--primary))]" style={{ fontWeight: 600 }}>{updater.progressPercent}%</span>
+                <span className="text-muted-foreground">{t('settings.updater.downloading')}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Downloaded — restart button */}
+          {updater.status === 'downloaded' && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
+              <div className="updater-status-chip up-to-date">
+                <CheckCircle2 size={12} />
+                {t('settings.updater.downloadComplete')}
+              </div>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="updater-actions">
+            {(updater.status === 'idle' || updater.status === 'upToDate' || updater.status === 'error' || updater.status === 'offline') && (
+              <button
+                className="btn-outline"
+                onClick={() => updater.checkForUpdates(true)}
+                disabled={updater.status === 'checking' as string}
+                data-tauri-drag-region="false"
+                style={{ fontSize: 12, padding: '7px 14px', gap: 6 }}
+              >
+                <RefreshCw size={13} />
+                {t('settings.updater.checkBtn')}
+              </button>
+            )}
+            {updater.status === 'available' && (
+              <button
+                className="btn-accent"
+                onClick={() => updater.downloadAndInstall()}
+                data-tauri-drag-region="false"
+                style={{ fontSize: 12, padding: '7px 14px', gap: 6 }}
+              >
+                <Download size={13} />
+                {t('settings.updater.downloadBtn')}
+              </button>
+            )}
+            {updater.status === 'downloaded' && (
+              <button
+                className="btn-accent"
+                onClick={() => updater.relaunchApp()}
+                data-tauri-drag-region="false"
+                style={{ fontSize: 12, padding: '7px 14px', gap: 6 }}
+              >
+                <RotateCw size={13} />
+                {t('settings.updater.restartBtn')}
+              </button>
+            )}
+          </div>
+
+          {/* Auto-check toggle */}
+          <div className="updater-auto-check-row">
+            <div className="updater-auto-check-label">
+              <span style={{ fontSize: 12, fontWeight: 600 }}>{t('settings.updater.autoCheck')}</span>
+              <small className="text-muted-foreground" style={{ fontSize: 11 }}>{t('settings.updater.autoCheckDesc')}</small>
+            </div>
+            <button
+              className={`cortex-toggle ${autoUpdateCheck ? 'is-active' : ''}`}
+              onClick={() => setAutoUpdateCheck(!autoUpdateCheck)}
+              role="switch"
+              aria-checked={autoUpdateCheck}
+              data-tauri-drag-region="false"
+            >
+              <span className="thumb" />
+            </button>
           </div>
         </div>
       </div>
