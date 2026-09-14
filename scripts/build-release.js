@@ -154,32 +154,37 @@ const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
 
 // 11. Copy updater artifacts (signature + latest.json) for Tauri v2 auto-update
 console.log(`\n${cyan('•')} Preparing updater artifacts...`);
-const latestJsonPath = path.join(nsisDir, 'latest.json');
-const nsisZipFiles = fs.readdirSync(nsisDir).filter(f => f.endsWith('.nsis.zip'));
-const nsisSigFiles = fs.readdirSync(nsisDir).filter(f => f.endsWith('.nsis.zip.sig'));
+const allSigFiles = fs.readdirSync(nsisDir).filter(f => f.endsWith('.sig'));
 
 let updaterReady = false;
 
-if (fs.existsSync(latestJsonPath)) {
-  fs.copyFileSync(latestJsonPath, path.join(distInstallerDir, 'latest.json'));
-  console.log(`${green('✓')} Copied ${bold('latest.json')} to dist-installer.`);
+if (allSigFiles.length > 0) {
+  const sigFile = allSigFiles.find(f => f.includes(newVersion)) || allSigFiles[0];
+  const sigContent = fs.readFileSync(path.join(nsisDir, sigFile), 'utf8').trim();
+  
+  // Copy the signature file
+  const targetSigName = `${versionedSetupName}.sig`;
+  fs.writeFileSync(path.join(distInstallerDir, targetSigName), sigContent, 'utf8');
+  console.log(`${green('✓')} Saved signature -> ${bold(targetSigName)}`);
+
+  // Generate latest.json manifest
+  const manifest = {
+    version: `v${newVersion}`,
+    notes: `CortexOS Release v${newVersion} - Neural auto-updates and full offline engine support.`,
+    pub_date: new Date().toISOString(),
+    platforms: {
+      'windows-x86_64': {
+        signature: sigContent,
+        url: `https://github.com/3boodx7D/CortexOS/releases/download/v${newVersion}/${versionedSetupName}`
+      }
+    }
+  };
+
+  fs.writeFileSync(path.join(distInstallerDir, 'latest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+  console.log(`${green('✓')} Generated ${bold('latest.json')} manifest for GitHub Releases.`);
   updaterReady = true;
-}
-
-if (nsisZipFiles.length > 0) {
-  const zipSource = nsisZipFiles.find(f => f.includes(newVersion)) || nsisZipFiles[0];
-  fs.copyFileSync(path.join(nsisDir, zipSource), path.join(distInstallerDir, zipSource));
-  console.log(`${green('✓')} Copied ${bold(zipSource)} to dist-installer.`);
-}
-
-if (nsisSigFiles.length > 0) {
-  const sigSource = nsisSigFiles.find(f => f.includes(newVersion)) || nsisSigFiles[0];
-  fs.copyFileSync(path.join(nsisDir, sigSource), path.join(distInstallerDir, sigSource));
-  console.log(`${green('✓')} Copied ${bold(sigSource)} (signature) to dist-installer.`);
-}
-
-if (!updaterReady) {
-  console.log(`${yellow('!')} No latest.json found. Set TAURI_SIGNING_PRIVATE_KEY to enable updater signing.`);
+} else {
+  console.log(`${yellow('!')} No signature file found. Set TAURI_SIGNING_PRIVATE_KEY to enable updater signing.`);
 }
 
 console.log('\n' + green(bold('╔═════════════════════════════════════════════════════════════════════════╗')));
