@@ -25,7 +25,7 @@ interface SupabaseUserRecord {
 export default function OwnerCockpit() {
   const { locale } = useTranslation();
   const [, setLocation] = useLocation();
-  const { isOwner, email } = useUserContext();
+  const { isOwner, email, displayName } = useUserContext();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -219,8 +219,8 @@ $$;`;
               </div>
               <p className="text-xs text-zinc-400 mt-1 max-w-2xl leading-relaxed">
                 {locale === 'ar'
-                  ? 'مرحباً بك يا عبد الرحمن. لوحة التحكم الحصرية لإدارة قاعدة بيانات سوبا بيس، التحكم برتب ومستخدمي كورتكس، ومراقبة حالة الكلاستر وقواعد الحماية RLS في الوقت الفعلي.'
-                  : 'Welcome, Abdulrahman. Exclusive executive terminal for Supabase cloud cluster governance, user role modification, and real-time database telemetry.'}
+                  ? `مرحباً بك${displayName ? ` يا ${displayName}` : ''}. لوحة التحكم الحصرية لإدارة قاعدة بيانات سوبا بيس، التحكم برتب ومستخدمي كورتكس، ومراقبة حالة الكلاستر وقواعد الحماية RLS في الوقت الفعلي.`
+                  : `Welcome${displayName ? `, ${displayName}` : ''}. Exclusive executive terminal for Supabase cloud cluster governance, user role modification, and real-time database telemetry.`}
               </p>
             </div>
           </div>

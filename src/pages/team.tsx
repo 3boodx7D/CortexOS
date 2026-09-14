@@ -40,8 +40,8 @@ export interface ActivityFeedItem {
 const DEFAULT_MEMBERS: TeamMember[] = [
   {
     id: 'user-01',
-    email: 'cabdulrahman36@gmail.com',
-    displayName: 'Abdulrahman (Abood)',
+    email: 'architect@cortexos.local',
+    displayName: 'Lead Architect',
     role: 'admin',
     avatarUrl: '',
     status: 'in_flow',
@@ -88,7 +88,7 @@ const DEFAULT_ACTIVITIES: ActivityFeedItem[] = [
   {
     id: 'act-01',
     userId: 'user-01',
-    userName: 'Abdulrahman (Abood)',
+    userName: 'Lead Architect',
     projectName: 'CortexOS',
     action: 'created_snapshot',
     details: 'Created production ZIP snapshot v0.2.33 with hardware telemetry fixes',
@@ -115,7 +115,7 @@ const DEFAULT_ACTIVITIES: ActivityFeedItem[] = [
   {
     id: 'act-04',
     userId: 'user-01',
-    userName: 'Abdulrahman (Abood)',
+    userName: 'Lead Architect',
     projectName: 'CortexOS',
     action: 'completed_task',
     details: 'Configured Supabase PostgreSQL schema with strict RLS and UUIDs',

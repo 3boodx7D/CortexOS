@@ -1091,7 +1091,7 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
     ),
 
     about: (
-      <div className="settings-form">
+      <div className="settings-form space-y-6 animate-in fade-in duration-150">
         <div className="settings-section-heading">
           <span className="settings-icon"><Info size={16} /></span>
           <div>
@@ -1100,42 +1100,74 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
           </div>
         </div>
 
-        <div className="about-hero panel-subtle">
-          <div className="about-hero-header">
-            <img src="/logo.png" alt="CortexOS Logo" className="about-logo-img" />
-            <div className="about-version-chip mono">
-              <span className="pulse-dot-green" />
-              <strong>{t('settings.about.betaBadge')} {pkg.version}</strong>
+        {/* ── 1. Hero System Identity Card ── */}
+        <div className="about-hero panel-subtle border border-[hsl(var(--border))] rounded-2xl p-6 relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[hsl(var(--border)/0.7)]">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <img src="/logo.png" alt="CortexOS Logo" className="w-14 h-14 rounded-2xl object-cover border border-cyan/40 shadow-lg shadow-cyan/15" />
+                <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-[hsl(var(--card))]" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h3 className="text-base font-bold tracking-tight text-[hsl(var(--foreground))]">CortexOS Desktop</h3>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-cyan/12 text-cyan border border-cyan/30">
+                    v{pkg.version}
+                  </span>
+                </div>
+                <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
+                  Native Windows 11 Neural Command Center & Second Brain
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/25">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>{t('settings.about.allNominal')}</span>
+              </span>
             </div>
           </div>
 
-          <div className="about-grid">
-            <div className="about-item">
-              <small>{t('settings.about.versionLabel')}</small>
-              <b className="mono">{pkg.version}</b>
+          {/* 4-Item Diagnostic System Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-5">
+            <div className="p-3.5 rounded-xl bg-[hsl(var(--card)/0.6)] border border-[hsl(var(--border))] flex flex-col justify-between">
+              <span className="text-[11px] font-mono text-[hsl(var(--muted-foreground))] uppercase tracking-wider">{t('settings.about.versionLabel')}</span>
+              <div className="flex items-center justify-between mt-2">
+                <b className="font-mono text-sm text-[hsl(var(--foreground))]">v{pkg.version}</b>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`CortexOS v${pkg.version}`);
+                    notify(locale === 'ar' ? 'تم نسخ رقم الإصدار' : 'Version copied to clipboard');
+                  }}
+                  className="text-[hsl(var(--muted-foreground))] hover:text-cyan p-1 transition"
+                  title="Copy version"
+                >
+                  <Copy size={13} />
+                </button>
+              </div>
             </div>
-            <div className="about-item">
-              <small>{t('settings.about.channel')}</small>
-              <b>{t('settings.about.channelValue')} (v{pkg.version})</b>
-            </div>
-            <div className="about-item">
-              <small>{t('settings.about.architecture')}</small>
-              <b>{t('settings.about.architectureValue')}</b>
-            </div>
-            <div className="about-item">
-              <small>{t('settings.about.cluster')}</small>
-              <b>{t('settings.about.clusterValue')}</b>
-            </div>
-          </div>
 
-          <div className="about-footer-status">
-            <span className="tiny-led cyan" />
-            <span>{t('settings.about.allNominal')}</span>
+            <div className="p-3.5 rounded-xl bg-[hsl(var(--card)/0.6)] border border-[hsl(var(--border))] flex flex-col justify-between">
+              <span className="text-[11px] font-mono text-[hsl(var(--muted-foreground))] uppercase tracking-wider">{t('settings.about.channel')}</span>
+              <b className="text-sm font-semibold text-[hsl(var(--foreground))] mt-2">{t('settings.about.channelValue')}</b>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[hsl(var(--card)/0.6)] border border-[hsl(var(--border))] flex flex-col justify-between">
+              <span className="text-[11px] font-mono text-[hsl(var(--muted-foreground))] uppercase tracking-wider">Host Engine</span>
+              <b className="font-mono text-xs text-[hsl(var(--foreground))] mt-2">Tauri v2 + Rust Core</b>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[hsl(var(--card)/0.6)] border border-[hsl(var(--border))] flex flex-col justify-between">
+              <span className="text-[11px] font-mono text-[hsl(var(--muted-foreground))] uppercase tracking-wider">Local Backend</span>
+              <b className="font-mono text-xs text-[hsl(var(--foreground))] mt-2">FastAPI (127.0.0.1:8000)</b>
+            </div>
           </div>
         </div>
 
-        {/* ── CortexOS Update System Card ── */}
-        <div className="settings-section-heading" style={{ marginTop: 18 }}>
+        {/* ── 2. Modern Neural Auto-Updater Hub ── */}
+        <div className="settings-section-heading pt-2">
           <span className="settings-icon"><Download size={16} /></span>
           <div>
             <h2>{t('settings.updater.title')}</h2>
@@ -1143,150 +1175,158 @@ export default function Settings({ notify }: { notify: (msg: string) => void }) 
           </div>
         </div>
 
-        <div className="updater-card">
-          {/* Status chip */}
-          <div className="updater-card-header">
-            {updater.status === 'upToDate' && (
-              <div className="updater-status-chip up-to-date">
-                <CheckCircle2 size={12} />
-                {t('settings.updater.upToDate')}
-              </div>
-            )}
-            {updater.status === 'available' && (
-              <div className="updater-status-chip available">
-                <Download size={12} />
-                {t('settings.updater.available')}
-              </div>
-            )}
-            {updater.status === 'offline' && (
-              <div className="updater-status-chip offline">
-                <WifiOff size={12} />
-                {t('settings.updater.offline')}
-              </div>
-            )}
-            {updater.status === 'error' && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
-                <div className="updater-status-chip error">
-                  {t('settings.updater.error')}
-                </div>
-                <small className="text-muted-foreground" style={{ fontSize: 11, maxWidth: 460, lineHeight: 1.5 }}>
-                  {updater.errorMessage && (updater.errorMessage.includes('404') || updater.errorMessage.toLowerCase().includes('release') || updater.errorMessage.toLowerCase().includes('remote') || updater.errorMessage.toLowerCase().includes('json'))
-                    ? t('settings.updater.noRelease')
-                    : updater.errorMessage}
-                </small>
-              </div>
-            )}
-            {(updater.status === 'checking') && (
-              <div className="updater-status-chip checking">
-                <Loader2 size={12} className="neural-spinner" />
-                {t('settings.updater.checking')}
-              </div>
-            )}
-            {(updater.status === 'idle') && (
-              <div className="updater-status-chip checking">
-                {t('settings.updater.checkBtn')}
-              </div>
-            )}
-          </div>
-
-          {/* Update info: version + release notes */}
-          {updater.status === 'available' && updater.updateInfo && (
-            <>
-              <div style={{ display: 'flex', gap: 16, fontSize: 12 }}>
-                <div>
-                  <small className="text-muted-foreground">{t('settings.updater.newVersion')}</small>
-                  <b className="mono block" style={{ color: '#00aff4' }}>{updater.updateInfo.version}</b>
-                </div>
-                {updater.updateInfo.date && (
-                  <div>
-                    <small className="text-muted-foreground">{t('settings.updater.releaseDate')}</small>
-                    <b className="block">{new Date(updater.updateInfo.date).toLocaleDateString()}</b>
-                  </div>
-                )}
-              </div>
-              {updater.updateInfo.body && (
-                <div>
-                  <small className="text-muted-foreground" style={{ fontSize: 11 }}>{t('settings.updater.releaseNotes')}</small>
-                  <div className="updater-release-notes">{updater.updateInfo.body}</div>
+        <div className="updater-hub-card panel-subtle border border-[hsl(var(--border))] rounded-2xl p-6 space-y-6">
+          {/* Status Display Area */}
+          <div className="updater-status-container p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card)/0.7)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              {updater.status === 'upToDate' && (
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/12 border border-emerald-500/30 text-emerald-500 flex items-center justify-center shrink-0">
+                  <CheckCircle2 size={20} />
                 </div>
               )}
-            </>
-          )}
+              {updater.status === 'available' && (
+                <div className="w-10 h-10 rounded-xl bg-cyan/15 border border-cyan/35 text-cyan flex items-center justify-center shrink-0 animate-pulse">
+                  <Download size={20} />
+                </div>
+              )}
+              {updater.status === 'downloading' && (
+                <div className="w-10 h-10 rounded-xl bg-cyan/15 border border-cyan/35 text-cyan flex items-center justify-center shrink-0">
+                  <Loader2 size={20} className="animate-spin" />
+                </div>
+              )}
+              {updater.status === 'downloaded' && (
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-emerald-500 flex items-center justify-center shrink-0">
+                  <Check size={20} />
+                </div>
+              )}
+              {(updater.status === 'checking' || updater.status === 'idle') && (
+                <div className="w-10 h-10 rounded-xl bg-cyan/10 border border-cyan/20 text-cyan flex items-center justify-center shrink-0">
+                  <RefreshCw size={20} className={updater.status === 'checking' ? 'animate-spin' : ''} />
+                </div>
+              )}
+              {updater.status === 'offline' && (
+                <div className="w-10 h-10 rounded-xl bg-amber-500/12 border border-amber-500/30 text-amber-500 flex items-center justify-center shrink-0">
+                  <WifiOff size={20} />
+                </div>
+              )}
+              {updater.status === 'error' && (
+                <div className="w-10 h-10 rounded-xl bg-rose-500/12 border border-rose-500/30 text-rose-500 flex items-center justify-center shrink-0">
+                  <Shield size={20} />
+                </div>
+              )}
 
-          {/* Downloading progress */}
-          {updater.status === 'downloading' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div className="updater-inline-progress">
-                <div className="updater-inline-progress-fill" style={{ width: `${updater.progressPercent}%` }} />
-              </div>
-              <div className="updater-progress-label">
-                <span className="mono text-[hsl(var(--primary))]" style={{ fontWeight: 600 }}>{updater.progressPercent}%</span>
-                <span className="text-muted-foreground">{t('settings.updater.downloading')}</span>
+              <div>
+                <h4 className="text-sm font-bold text-[hsl(var(--foreground))]">
+                  {updater.status === 'upToDate' && t('settings.updater.upToDate')}
+                  {updater.status === 'available' && t('settings.updater.available')}
+                  {updater.status === 'downloading' && t('settings.updater.downloading')}
+                  {updater.status === 'downloaded' && t('settings.updater.downloadComplete')}
+                  {updater.status === 'checking' && t('settings.updater.checking')}
+                  {updater.status === 'idle' && (locale === 'ar' ? 'جاهز لفحص التحديثات' : 'Ready to check for updates')}
+                  {updater.status === 'offline' && t('settings.updater.offline')}
+                  {updater.status === 'error' && (locale === 'ar' ? 'تعذر التحقق من التحديث' : 'Update Check Error')}
+                </h4>
+                <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
+                  {updater.status === 'upToDate' && (locale === 'ar' ? 'أنت تعمل على أحدث إصدار رسمي من CortexOS.' : 'You are currently running the newest official build.')}
+                  {updater.status === 'available' && (locale === 'ar' ? `الإصدار ${updater.updateInfo?.version || ''} متاح للتحميل والتثبيت الفوري.` : `Version ${updater.updateInfo?.version || ''} is available for installation.`)}
+                  {updater.status === 'downloading' && (locale === 'ar' ? 'جاري تحميل حزمة التثبيت بالخلفية...' : 'Downloading installer package in the background...')}
+                  {updater.status === 'downloaded' && (locale === 'ar' ? 'تم تنزيل الحزمة بنجاح. انقر أدناه لإعادة التشغيل وتطبيق التحديث.' : 'Update ready. Click below to install and relaunch.')}
+                  {updater.status === 'offline' && (locale === 'ar' ? 'يرجى التحقق من اتصال الإنترنت للتواصل مع خوادم التحديث.' : 'Check your internet connection to reach GitHub release servers.')}
+                  {updater.status === 'error' && (updater.errorMessage || (locale === 'ar' ? 'فشل فحص الإصدار الجديد.' : 'Failed to reach GitHub release manifest.'))}
+                  {(updater.status === 'idle' || updater.status === 'checking') && (locale === 'ar' ? 'يتم الفحص المباشر عبر مستودع الإصدارات الرسمية في GitHub.' : 'Direct verification against official GitHub Releases.')}
+                </p>
               </div>
             </div>
-          )}
 
-          {/* Downloaded — restart button */}
-          {updater.status === 'downloaded' && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
-              <div className="updater-status-chip up-to-date">
-                <CheckCircle2 size={12} />
-                {t('settings.updater.downloadComplete')}
-              </div>
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 shrink-0">
+              {(updater.status === 'idle' || updater.status === 'upToDate' || updater.status === 'error' || updater.status === 'offline') && (
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => updater.checkForUpdates(true)}
+                  style={{ fontSize: 12, padding: '8px 16px', gap: 7 }}
+                  data-testid="button-settings-check-updates"
+                >
+                  <RefreshCw size={13} />
+                  <span>{t('settings.updater.checkBtn')}</span>
+                </button>
+              )}
+              {updater.status === 'available' && (
+                <button
+                  type="button"
+                  className="btn-accent"
+                  onClick={() => updater.startUpdate()}
+                  style={{ fontSize: 12, padding: '8px 18px', gap: 7 }}
+                  data-testid="button-settings-download-update"
+                >
+                  <Download size={14} />
+                  <span>{t('settings.updater.downloadBtn')}</span>
+                </button>
+              )}
+              {updater.status === 'downloaded' && (
+                <button
+                  type="button"
+                  className="btn-accent"
+                  onClick={() => updater.installAndRelaunch()}
+                  style={{ fontSize: 12, padding: '8px 18px', gap: 7 }}
+                  data-testid="button-settings-restart-update"
+                >
+                  <RotateCw size={14} />
+                  <span>{t('settings.updater.restartBtn')}</span>
+                </button>
+              )}
             </div>
-          )}
-
-          {/* Action buttons */}
-          <div className="updater-actions">
-            {(updater.status === 'idle' || updater.status === 'upToDate' || updater.status === 'error' || updater.status === 'offline') && (
-              <button
-                className="btn-outline"
-                onClick={() => updater.checkForUpdates(true)}
-                data-tauri-drag-region="false"
-                style={{ fontSize: 12, padding: '7px 14px', gap: 6 }}
-              >
-                <RefreshCw size={13} />
-                {t('settings.updater.checkBtn')}
-              </button>
-            )}
-            {updater.status === 'available' && (
-              <button
-                className="btn-accent"
-                onClick={() => updater.startUpdate()}
-                data-tauri-drag-region="false"
-                style={{ fontSize: 12, padding: '7px 14px', gap: 6 }}
-              >
-                <Download size={13} />
-                {t('settings.updater.downloadBtn')}
-              </button>
-            )}
-            {updater.status === 'downloaded' && (
-              <button
-                className="btn-accent"
-                onClick={() => updater.installAndRelaunch()}
-                data-tauri-drag-region="false"
-                style={{ fontSize: 12, padding: '7px 14px', gap: 6 }}
-              >
-                <RotateCw size={13} />
-                {t('settings.updater.restartBtn')}
-              </button>
-            )}
           </div>
 
-          {/* Auto-check toggle */}
-          <div className="updater-auto-check-row">
-            <div className="updater-auto-check-label">
-              <span style={{ fontSize: 12, fontWeight: 600 }}>{t('settings.updater.autoCheck')}</span>
-              <small className="text-muted-foreground" style={{ fontSize: 11 }}>{t('settings.updater.autoCheckDesc')}</small>
+          {/* Downloading Progress Bar */}
+          {updater.status === 'downloading' && (
+            <div className="space-y-2 p-4 rounded-xl border border-cyan/25 bg-cyan/5">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-[hsl(var(--foreground))] font-semibold">{locale === 'ar' ? 'التقدم' : 'Progress'}</span>
+                <span className="text-cyan font-bold">{updater.progressPercent}%</span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-[hsl(var(--muted)/0.3)] overflow-hidden">
+                <div
+                  className="h-full bg-cyan rounded-full transition-all duration-300 shadow-sm shadow-cyan/50"
+                  style={{ width: `${updater.progressPercent}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Release Notes Container if Update is Available */}
+          {updater.status === 'available' && updater.updateInfo && (
+            <div className="p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card)/0.5)] space-y-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-[hsl(var(--foreground))]">{t('settings.updater.releaseNotes')}</span>
+                <span className="font-mono text-[hsl(var(--muted-foreground))]">v{updater.updateInfo.version}</span>
+              </div>
+              <div className="text-xs leading-relaxed text-[hsl(var(--muted-foreground))] max-h-36 overflow-y-auto pr-2 whitespace-pre-wrap font-sans">
+                {updater.updateInfo.body || (locale === 'ar' ? 'تحسينات عامة في الأداء وإصلاحات للنظام.' : 'General performance improvements and bug fixes.')}
+              </div>
+            </div>
+          )}
+
+          {/* Preferences Row: Auto-Check Toggle */}
+          <div className="flex items-center justify-between pt-4 border-t border-[hsl(var(--border)/0.7)]">
+            <div className="space-y-0.5">
+              <b className="text-xs font-semibold text-[hsl(var(--foreground))]">{t('settings.updater.autoCheck')}</b>
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">{t('settings.updater.autoCheckDesc')}</p>
             </div>
             <button
-              className={`cortex-toggle ${autoUpdateCheck ? 'is-active' : ''}`}
-              onClick={() => setAutoUpdateCheck(!autoUpdateCheck)}
+              type="button"
               role="switch"
               aria-checked={autoUpdateCheck}
-              data-tauri-drag-region="false"
+              className={`toggle ${autoUpdateCheck ? 'toggle-on' : ''}`}
+              onClick={() => {
+                const next = !autoUpdateCheck;
+                setAutoUpdateCheck(next);
+                notify(next ? (locale === 'ar' ? 'تم تفعيل الفحص التلقائي' : 'Auto update check enabled') : (locale === 'ar' ? 'تم تعطيل الفحص التلقائي' : 'Auto update check disabled'));
+              }}
+              data-testid="toggle-auto-update-check"
             >
-              <span className="thumb" />
+              <span className="toggle-thumb" />
             </button>
           </div>
         </div>

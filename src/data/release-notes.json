@@ -1,0 +1,47 @@
+{
+  "version": "0.3.25",
+  "releaseDate": "2026-09-14",
+  "title": {
+    "en": "Welcome to CortexOS v0.3.25",
+    "ar": "مرحباً بك في CortexOS v0.3.25"
+  },
+  "subtitle": {
+    "en": "Major auto-updater enhancements, refreshed System Hub, and personalized neural workspace.",
+    "ar": "ترقية شاملة لنظام التحديث التلقائي، إعادة تصميم قسم النظام، وتخصيص هوية مساحة العمل."
+  },
+  "highlights": [
+    {
+      "icon": "Zap",
+      "title": {
+        "en": "Discord-Grade Silent Updates",
+        "ar": "تحديثات سلسة شبيهة بـ Discord"
+      },
+      "description": {
+        "en": "Installer no longer locks background processes. Updates install in a fast, centered window and relaunch instantly.",
+        "ar": "المثبت لم يعد يواجه أي تجميد للعمليات. يتم التحديث عبر نافذة مصغرة مركزية ثم إعادة التشغيل فوراً."
+      }
+    },
+    {
+      "icon": "Sliders",
+      "title": {
+        "en": "Redesigned System & Version Hub",
+        "ar": "مركز النظام والإصدار المطور"
+      },
+      "description": {
+        "en": "Polished settings interface with high-contrast Dark and Light theme parity, system diagnostics, and update controls.",
+        "ar": "تصميم متقن وجديد كلياً في الإعدادات مع دعم كامل للثيمين الداكن والفاتح وتشخيص دقيق للنظام."
+      }
+    },
+    {
+      "icon": "UserCheck",
+      "title": {
+        "en": "Dynamic Workspace Identity",
+        "ar": "هوية حساب ومساحة عمل ديناميكية"
+      },
+      "description": {
+        "en": "All workspace greetings and system placeholders now dynamically sync with your authenticated profile.",
+        "ar": "كافة التحيات والتسميات في مساحة العمل أصبحت تتزامن ذاتياً مع ملف حسابك الشخصي الحقيقي."
+      }
+    }
+  ]
+}

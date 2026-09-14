@@ -80,15 +80,15 @@
     "integratedGpu": "معالج رسومي مدمج للشاشة والذكاء الاصطناعي"
   },
   "account": {
-    "name": "عبد الرحمن",
+    "name": "المستخدم",
     "role": "مؤسس وطالب",
     "signOut": "تسجيل الخروج"
   },
   "overview": {
     "eyebrow": "01 / لوحة القيادة",
-    "morningGreeting": "صباح الخير، عبد الرحمن.",
-    "afternoonGreeting": "طاب يومك، عبد الرحمن.",
-    "eveningGreeting": "مساء الخير، عبد الرحمن.",
+    "morningGreeting": "صباح الخير.",
+    "afternoonGreeting": "طاب يومك.",
+    "eveningGreeting": "مساء الخير.",
     "subtitle": "مكتبك هادئ. سياقك جاهز.",
     "whatsNewTag": "v0.3.24",
     "whatsNewTitle": "تم تحديث CortexOS بنجاح!",
@@ -612,7 +612,7 @@
     "tabSignUp": "إنشاء حساب جديد",
     "tabForgotPassword": "استعادة كلمة المرور",
     "displayName": "الاسم الكامل / اسم العرض",
-    "displayNamePlaceholder": "مثال: عبد الرحمن",
+    "displayNamePlaceholder": "مثال: أحمد",
     "username": "اسم المستخدم",
     "usernamePlaceholder": "اسم_المستخدم",
     "role": "المسمى أو التخصص",

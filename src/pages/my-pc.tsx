@@ -64,7 +64,7 @@ const defaultHardware: HardwareDetails = {
     'NVIDIA GeForce RTX 3050 6GB Laptop GPU'
   ],
   disks: [
-    { drive: 'C:', mount: 'C:\\', label: 'AboodOS', fs: 'NTFS', total_gb: 930.5, used_gb: 501.1, free_gb: 429.4, percent: 53.9 },
+    { drive: 'C:', mount: 'C:\\', label: 'Windows System', fs: 'NTFS', total_gb: 930.5, used_gb: 501.1, free_gb: 429.4, percent: 53.9 },
     { drive: 'D:', mount: 'D:\\', label: 'New Volume', fs: 'NTFS', total_gb: 931.5, used_gb: 191.3, free_gb: 740.2, percent: 20.5 }
   ],
   system: {

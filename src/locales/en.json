@@ -80,15 +80,15 @@
     "integratedGpu": "Integrated Neural & Display GPU"
   },
   "account": {
-    "name": "Abdulrahman",
+    "name": "Operator",
     "role": "Founder & Student",
     "signOut": "Sign Out"
   },
   "overview": {
     "eyebrow": "01 / COCKPIT",
-    "morningGreeting": "Good morning, Abdulrahman.",
-    "afternoonGreeting": "Good afternoon, Abdulrahman.",
-    "eveningGreeting": "Good evening, Abdulrahman.",
+    "morningGreeting": "Good morning.",
+    "afternoonGreeting": "Good afternoon.",
+    "eveningGreeting": "Good evening.",
     "subtitle": "Your desk is quiet. Your context is loaded.",
     "whatsNewTag": "v0.3.24",
     "whatsNewTitle": "CortexOS Updated Successfully!",
@@ -612,7 +612,7 @@
     "tabSignUp": "Create Account",
     "tabForgotPassword": "Reset Password",
     "displayName": "Display Name",
-    "displayNamePlaceholder": "e.g. Abdulrahman",
+    "displayNamePlaceholder": "e.g. Alex",
     "username": "Username",
     "usernamePlaceholder": "username",
     "role": "Role / Specialization",

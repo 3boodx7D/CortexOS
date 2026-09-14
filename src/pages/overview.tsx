@@ -6,7 +6,7 @@ import {
   Zap, Monitor, Check, Sparkles
 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
-import { useUserPersistent } from '@/lib/user-store';
+import { useUserPersistent, useUserContext } from '@/lib/user-store';
 import { usePersistent } from '@/hooks/use-persistent';
 import { LiveTelemetryChart } from '@/components/live-telemetry-chart';
 import { apiGet } from '@/lib/api-client';
@@ -77,16 +77,17 @@ export default function Overview({ notify }: { notify: (msg: string) => void }) 
     return () => window.clearInterval(timer);
   }, []);
 
+  const { displayName } = useUserContext();
   const [focus, setFocus] = useUserPersistent('focus', false);
   const [turbo, setTurbo] = useUserPersistent('turbo', false);
-  const [lastSeenVersion, setLastSeenVersion] = usePersistent<string>('cortex-last-seen-version', '');
-  const showWhatsNew = lastSeenVersion !== '0.3.24';
 
   const getGreeting = () => {
     const hour = now.getHours();
-    if (hour < 12) return t('overview.morningGreeting');
-    if (hour < 18) return t('overview.afternoonGreeting');
-    return t('overview.eveningGreeting');
+    let prefix = t('overview.morningGreeting');
+    if (hour >= 12 && hour < 18) prefix = t('overview.afternoonGreeting');
+    else if (hour >= 18) prefix = t('overview.eveningGreeting');
+    const name = displayName && displayName !== 'Operator' ? displayName : '';
+    return name ? `${prefix.replace(/[.,]/g, '')}, ${name}.` : prefix;
   };
 
   const modules = [
@@ -100,59 +101,6 @@ export default function Overview({ notify }: { notify: (msg: string) => void }) 
 
   return (
     <div>
-      {showWhatsNew && (
-        <div
-          className="page-in"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 16,
-            padding: '12px 18px',
-            marginBottom: 20,
-            borderRadius: 10,
-            border: '1px solid rgba(0, 175, 244, 0.35)',
-            background: 'rgba(0, 175, 244, 0.05)',
-          }}
-          data-testid="banner-whats-new"
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: 'rgba(0, 175, 244, 0.12)',
-              color: '#00aff4',
-              flexShrink: 0
-            }}>
-              <Sparkles size={16} />
-            </span>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 }}>
-                <span className="mono" style={{ color: '#00aff4' }}>{t('overview.whatsNewTag')}</span>
-                <span>{t('overview.whatsNewTitle')}</span>
-              </div>
-              <p style={{ margin: '2px 0 0', fontSize: 12, color: 'hsl(var(--muted-foreground))' }}>
-                {t('overview.whatsNewDesc')}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setLastSeenVersion('0.3.24')}
-            className="btn-outline"
-            style={{ fontSize: 11, padding: '6px 12px', height: 30, gap: 5, flexShrink: 0 }}
-            data-testid="button-dismiss-whats-new"
-          >
-            <Check size={12} className="text-cyan" />
-            <span>{t('overview.dismiss')}</span>
-          </button>
-        </div>
-      )}
-
       <div className="section-title">
         <div>
           <div className="eyebrow mono">{t('overview.eyebrow')}</div>
