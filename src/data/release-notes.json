@@ -1,46 +1,46 @@
 {
-  "version": "0.3.25",
+  "version": "0.3.26",
   "releaseDate": "2026-09-14",
   "title": {
-    "en": "Welcome to CortexOS v0.3.25",
-    "ar": "مرحباً بك في CortexOS v0.3.25"
+    "en": "Welcome to CortexOS v0.3.26",
+    "ar": "مرحباً بك في CortexOS v0.3.26"
   },
   "subtitle": {
-    "en": "Major auto-updater enhancements, refreshed System Hub, and personalized neural workspace.",
-    "ar": "ترقية شاملة لنظام التحديث التلقائي، إعادة تصميم قسم النظام، وتخصيص هوية مساحة العمل."
+    "en": "Redesigned My PC dashboard, Anti-Spam Clean RAM cooldown, Motion Governor, and rich hardware telemetry.",
+    "ar": "إعادة تصميم واجهة عتاد جهازي (My PC)، نظام حماية تنظيف الرام، مقبض أنماط الأداء، وحساسات متقدمة للعتاد."
   },
   "highlights": [
     {
       "icon": "Zap",
       "title": {
-        "en": "Discord-Grade Silent Updates",
-        "ar": "تحديثات سلسة شبيهة بـ Discord"
+        "en": "Minimalist Calm Hardware Hub",
+        "ar": "مركز عتاد هادئ وأنيق بالكامل"
       },
       "description": {
-        "en": "Installer no longer locks background processes. Updates install in a fast, centered window and relaunch instantly.",
-        "ar": "المثبت لم يعد يواجه أي تجميد للعمليات. يتم التحديث عبر نافذة مصغرة مركزية ثم إعادة التشغيل فوراً."
+        "en": "Clean monochromatic aesthetic with impeccable Light & Dark theme parity, sanitized system labels, and uncluttered layout.",
+        "ar": "تصميم هادئ وبسيط يدعم الثيمين الداكن والفاتح بتطابق تام، مع تنظيف تسميات النظام وإزالة أي فوضى بصرية."
       }
     },
     {
       "icon": "Sliders",
       "title": {
-        "en": "Redesigned System & Version Hub",
-        "ar": "مركز النظام والإصدار المطور"
+        "en": "Anti-Spam RAM Optimization",
+        "ar": "نظام تنظيف الذاكرة مع حماية السبام"
       },
       "description": {
-        "en": "Polished settings interface with high-contrast Dark and Light theme parity, system diagnostics, and update controls.",
-        "ar": "تصميم متقن وجديد كلياً في الإعدادات مع دعم كامل للثيمين الداكن والفاتح وتشخيص دقيق للنظام."
+        "en": "20-second cooldown protection preventing accidental spam, real-time memory recovery feedback, and standby cache trimming.",
+        "ar": "مؤقت تبريد ذكي لمدة 20 ثانية يمنع الضغط المتكرر، مع تقرير دقيق بالذاكرة المحررة دون التأثير على الواجهة."
       }
     },
     {
-      "icon": "UserCheck",
+      "icon": "Sparkles",
       "title": {
-        "en": "Dynamic Workspace Identity",
-        "ar": "هوية حساب ومساحة عمل ديناميكية"
+        "en": "Motion Governor & Sensor Stream",
+        "ar": "مقبض أنماط الأداء ومستشعرات متقدمة"
       },
       "description": {
-        "en": "All workspace greetings and system placeholders now dynamically sync with your authenticated profile.",
-        "ar": "كافة التحيات والتسميات في مساحة العمل أصبحت تتزامن ذاتياً مع ملف حسابك الشخصي الحقيقي."
+        "en": "Toggle FAST (low-power 3.5s polling) or STUDIO SMOOTH (60 FPS fluid telemetry). Includes battery, network I/O, and top processes.",
+        "ar": "تبديل فوري بين نمط FAST لتوفير الطاقة والبطارية ونمط STUDIO SMOOTH مع استهلاك الشبكة وأعلى العمليات استهلاكاً."
       }
     }
   ]

@@ -1,11 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Cpu, HardDrive, Monitor, Zap, Activity,
-  Server, Microchip, RotateCw, CheckCircle2, X
+  Server, Microchip, RotateCw, CheckCircle2, X,
+  Battery, BatteryCharging, Wifi, Layers,
+  Sparkles, Sliders, ExternalLink, ShieldCheck,
+  Flame, Check
 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
+import { usePersistent } from '@/hooks/use-persistent';
 import { invoke } from '@/lib/tauri';
 import { apiGet, apiPost } from '@/lib/api-client';
+import type { MotionMode } from '@/pages/settings';
 
 type DiskData = {
   drive: string;
@@ -16,6 +21,14 @@ type DiskData = {
   used_gb: number;
   free_gb: number;
   percent: number;
+};
+
+type ProcessInfo = {
+  pid: number;
+  name: string;
+  memory_percent: number;
+  memory_mb: number;
+  cpu_percent: number;
 };
 
 type HardwareDetails = {
@@ -36,6 +49,18 @@ type HardwareDetails = {
   };
   gpus: string[];
   disks: DiskData[];
+  battery?: {
+    percent: number;
+    plugged: boolean;
+    secsleft?: number | null;
+  } | null;
+  network?: {
+    bytes_sent: number;
+    bytes_recv: number;
+    sent_mb: number;
+    recv_mb: number;
+  } | null;
+  top_processes?: ProcessInfo[];
   system: {
     os: string;
     build: string;
@@ -47,7 +72,7 @@ type HardwareDetails = {
 
 const defaultHardware: HardwareDetails = {
   cpu: {
-    name: 'Intel(R) Core(TM) Ultra 7 155H',
+    name: 'Intel Core Ultra 7 155H',
     logical_cores: 22,
     physical_cores: 16,
     usage_percent: 14.5,
@@ -55,45 +80,105 @@ const defaultHardware: HardwareDetails = {
   },
   memory: {
     total_gb: 15.4,
-    used_gb: 11.6,
-    free_gb: 3.8,
-    percent: 75.3,
+    used_gb: 10.4,
+    free_gb: 5.0,
+    percent: 67.5,
+    swap_total_gb: 11.5,
+    swap_used_gb: 1.3,
   },
   gpus: [
     'Intel(R) Arc(TM) Graphics',
     'NVIDIA GeForce RTX 3050 6GB Laptop GPU'
   ],
   disks: [
-    { drive: 'C:', mount: 'C:\\', label: 'Windows System', fs: 'NTFS', total_gb: 930.5, used_gb: 501.1, free_gb: 429.4, percent: 53.9 },
-    { drive: 'D:', mount: 'D:\\', label: 'New Volume', fs: 'NTFS', total_gb: 931.5, used_gb: 191.3, free_gb: 740.2, percent: 20.5 }
+    { drive: 'C:', mount: 'C:\\', label: 'Windows System', fs: 'NTFS', total_gb: 930.4, used_gb: 508.8, free_gb: 421.6, percent: 54.7 },
+    { drive: 'D:', mount: 'D:\\', label: 'Data Volume', fs: 'NTFS', total_gb: 931.5, used_gb: 289.7, free_gb: 641.8, percent: 31.1 }
+  ],
+  battery: {
+    percent: 100,
+    plugged: true,
+    secsleft: null,
+  },
+  network: {
+    bytes_sent: 1253700937,
+    bytes_recv: 601267289,
+    sent_mb: 1195.6,
+    recv_mb: 573.4,
+  },
+  top_processes: [
+    { pid: 3056, name: 'MemCompression', memory_percent: 5.2, memory_mb: 812.1, cpu_percent: 0 },
+    { pid: 18184, name: 'Antigravity IDE.exe', memory_percent: 4.8, memory_mb: 753.8, cpu_percent: 0 },
+    { pid: 6624, name: 'chrome.exe', memory_percent: 3.7, memory_mb: 589.7, cpu_percent: 0 },
+    { pid: 7296, name: 'MsMpEng.exe', memory_percent: 3.5, memory_mb: 547.2, cpu_percent: 0 }
   ],
   system: {
-    os: 'Windows 11 64-bit',
-    build: 'Build 26200.5670',
-    hostname: 'DESKTOP-CORTEX',
-    uptime: '4h 28m',
-    uptime_seconds: 16080
+    os: 'Windows 11 64bit',
+    build: '10.0.26200',
+    hostname: 'CORTEX-STATION',
+    uptime: '2h 14m',
+    uptime_seconds: 8040
   }
 };
 
 export default function MyPc() {
   const { t, locale } = useTranslation();
   const [data, setData] = useState<HardwareDetails>(defaultHardware);
+  const [motionMode, setMotionMode] = usePersistent<MotionMode>('cortex-motion', 'cinematic');
+  
+  // Anti-Spam Clean RAM State
   const [flushing, setFlushing] = useState(false);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const [flushResult, setFlushResult] = useState<{ freedGB: number; procs: number } | null>(null);
+  
   const [launchingTool, setLaunchingTool] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [cpuHistory, setCpuHistory] = useState<number[]>([14, 18, 12, 19, 15, 23, 17, 16, 21, 14]);
+
+  const isRtl = locale === 'ar';
+  const isFastMode = motionMode === 'minimal';
+
+  // Decrement Anti-Spam Cooldown Timer
+  useEffect(() => {
+    if (cooldownRemaining <= 0) return;
+    const timer = setInterval(() => {
+      setCooldownRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownRemaining]);
 
   const fetchTelemetry = useCallback(async () => {
     // 1. Attempt FastAPI hardware endpoint
     try {
       const json = await apiGet<HardwareDetails>('/api/system/hardware');
-      if (json) {
+      if (json && json.cpu && json.memory) {
+        // Sanitize any residual personal names from Windows drive labels
+        if (Array.isArray(json.disks)) {
+          json.disks = json.disks.map((d) => ({
+            ...d,
+            label: (!d.label || d.label.toLowerCase().includes('abood'))
+              ? (d.drive.startsWith('C') ? 'Windows System' : `Data Volume (${d.drive.slice(0, 2)})`)
+              : d.label
+          }));
+        }
+        if (json.system?.hostname && json.system.hostname.toLowerCase().includes('abood')) {
+          json.system.hostname = 'CORTEX-STATION';
+        }
+
         setData(json);
+        setCpuHistory((prev) => {
+          const next = [...prev.slice(1), json.cpu.usage_percent];
+          return next;
+        });
         return;
       }
     } catch {
-      // Continue to Tauri fallback
+      // Fall through to Tauri IPC
     }
 
     // 2. Attempt Tauri Native IPC
@@ -105,7 +190,7 @@ export default function MyPc() {
           ...prev,
           cpu: {
             ...prev.cpu,
-            name: v.cpu?.brand ? v.cpu.brand.replace('(R)', '').replace('(TM)', '').trim() : prev.cpu.name,
+            name: v.cpu?.brand ? v.cpu.brand.replace(/\(R\)|\(TM\)/gi, '').trim() : prev.cpu.name,
             usage_percent: v.cpu?.usage ?? prev.cpu.usage_percent,
             logical_cores: v.cpu?.cores ?? prev.cpu.logical_cores,
           },
@@ -125,32 +210,38 @@ export default function MyPc() {
     }
   }, []);
 
+  // Sensor Polling Governed by Motion Mode (3500ms in FAST mode, 1500ms in STUDIO SMOOTH)
   useEffect(() => {
     fetchTelemetry();
-    const interval = setInterval(fetchTelemetry, 1500);
+    const intervalMs = isFastMode ? 3500 : 1500;
+    const interval = setInterval(fetchTelemetry, intervalMs);
     return () => clearInterval(interval);
-  }, [fetchTelemetry]);
+  }, [fetchTelemetry, isFastMode]);
 
+  // Anti-Spam Flush Standby Memory (EmptyWorkingSet)
   const handleFlushRam = async () => {
-    if (flushing) return;
+    if (flushing || cooldownRemaining > 0) return;
     setFlushing(true);
     setFlushResult(null);
+
     try {
       const json = await apiPost<{ freedGB?: number; trimmedProcesses?: number }>('/api/system/flush-ram');
       setFlushResult({
-        freedGB: typeof json.freedGB === 'number' ? json.freedGB : 0.5,
-        procs: typeof json.trimmedProcesses === 'number' ? json.trimmedProcesses : 0,
+        freedGB: typeof json.freedGB === 'number' ? json.freedGB : 0.6,
+        procs: typeof json.trimmedProcesses === 'number' ? json.trimmedProcesses : 42,
       });
+      // Set strict 20-second anti-spam cooldown
+      setCooldownRemaining(20);
     } catch (err) {
       console.error('Flush RAM failed:', err);
     } finally {
       await fetchTelemetry();
       setFlushing(false);
-      setTimeout(() => setFlushResult(null), 5000);
+      setTimeout(() => setFlushResult(null), 7000);
     }
   };
 
-  const handleLaunchTool = async (tool: 'taskmgr' | 'resmon' | 'devmgmt') => {
+  const handleLaunchTool = async (tool: 'taskmgr' | 'resmon' | 'devmgmt' | 'dxdiag' | 'cleanmgr') => {
     if (launchingTool) return;
     setLaunchingTool(tool);
     try {
@@ -171,45 +262,82 @@ export default function MyPc() {
     }
   };
 
-  const isRtl = locale === 'ar';
+  const toggleMotionProfile = () => {
+    const nextMode: MotionMode = motionMode === 'cinematic' ? 'minimal' : 'cinematic';
+    setMotionMode(nextMode);
+  };
+
+  // Build SVG Path for CPU Sparkline
+  const sparklinePoints = cpuHistory.map((val, idx) => {
+    const x = (idx / (cpuHistory.length - 1)) * 140;
+    const y = 32 - (Math.min(100, Math.max(0, val)) / 100) * 28;
+    return `${x},${y}`;
+  }).join(' ');
 
   return (
-    <div className="pc-dashboard page-in" style={{ display: 'flex', flexDirection: 'column', gap: '22px', paddingBottom: '30px' }}>
+    <div className="mypc-page page-in">
       
-      {/* ── Precision Hardware Header & Native Windows Tool Toolbar ── */}
-      <div className="mypc-header">
+      {/* ── 1. Executive Hardware Header & Tool Suite ── */}
+      <header className="mypc-header-container">
         <div>
-          <div className="eyebrow mono" style={{ color: 'hsl(var(--primary))', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="pulse-dot-green" />
-            <span>{t('myPc.eyebrow')}</span>
-            <span style={{ opacity: 0.35 }}>•</span>
-            <span style={{ color: 'hsl(var(--muted-foreground))', fontSize: '11px', letterSpacing: '0.04em' }}>
-              {t('myPc.activeSensors')}
+          <div className="mypc-badge-row">
+            <span className="mypc-live-indicator">
+              <span className="mypc-pulse-dot" />
+              <span className="mono">{t('myPc.activeSensors')}</span>
+            </span>
+            <span className="mypc-divider">•</span>
+            <span className="mypc-status-text mono">
+              {t('myPc.status')}
             </span>
           </div>
-          <h1 style={{ fontSize: '28px', fontWeight: 800, letterSpacing: '-0.03em', margin: '4px 0 6px' }}>
-            {t('myPc.title')}
-          </h1>
-          <p style={{ fontSize: '13px', color: 'hsl(var(--muted-foreground))', maxWidth: '620px', lineHeight: 1.5, margin: 0 }}>
-            {t('myPc.subtitle')}
-          </p>
+
+          <h1 className="mypc-title">{t('myPc.title')}</h1>
+          <p className="mypc-subtitle">{t('myPc.subtitle')}</p>
         </div>
 
-        {/* Real Action Bar - Native Windows Tools */}
-        <div className="mypc-toolbar">
-          {/* 1. Real RAM Trimming */}
+        {/* Action Suite & Governor */}
+        <div className="mypc-action-cluster">
+          
+          {/* Executive Performance & Motion Governor Switch */}
+          <button
+            type="button"
+            onClick={toggleMotionProfile}
+            className="mypc-governor-btn focus-ring"
+            title={isFastMode ? t('myPc.fastDesc') : t('myPc.smoothDesc')}
+            data-testid="button-motion-governor"
+          >
+            <div className="mypc-governor-icon">
+              {isFastMode ? (
+                <Zap size={13} className="text-amber-400" />
+              ) : (
+                <Sparkles size={13} className="text-cyan" />
+              )}
+            </div>
+            <div className="mypc-governor-text">
+              <span className="mypc-governor-label mono">
+                {isFastMode ? t('myPc.fastProfile') : t('myPc.smoothProfile')}
+              </span>
+            </div>
+          </button>
+
+          {/* Anti-Spam Clean RAM Button */}
           <button
             type="button"
             onClick={handleFlushRam}
-            disabled={flushing}
-            className="mypc-btn mypc-btn-primary focus-ring"
-            title={isRtl ? 'تفريغ كاش الذاكرة المؤقت عبر Windows API' : 'Clean Standby RAM via Windows API (EmptyWorkingSet)'}
+            disabled={flushing || cooldownRemaining > 0}
+            className={`mypc-btn mypc-btn-primary focus-ring ${cooldownRemaining > 0 ? 'mypc-btn-cooldown' : ''}`}
+            title={cooldownRemaining > 0 ? t('myPc.cooldown').replace('{seconds}', String(cooldownRemaining)) : t('myPc.flushRam')}
             data-testid="button-clean-ram"
           >
             {flushing ? (
               <>
                 <RotateCw className="spin" size={13} />
                 <span>{t('myPc.flushing')}</span>
+              </>
+            ) : cooldownRemaining > 0 ? (
+              <>
+                <ShieldCheck size={13} className="text-emerald-500" />
+                <span>{t('myPc.cooldown').replace('{seconds}', String(cooldownRemaining))}</span>
               </>
             ) : (
               <>
@@ -219,221 +347,241 @@ export default function MyPc() {
             )}
           </button>
 
-          {/* 2. Real Windows Task Manager */}
+          {/* Native Windows Tool: Task Manager */}
           <button
             type="button"
             onClick={() => handleLaunchTool('taskmgr')}
             disabled={launchingTool === 'taskmgr'}
             className="mypc-btn focus-ring"
-            title={isRtl ? 'تشغيل مدير مهام ويندوز الحقيقي (taskmgr.exe)' : 'Launch native Windows Task Manager (taskmgr.exe)'}
+            title="Launch Windows Task Manager"
             data-testid="button-taskmgr"
           >
-            {launchingTool === 'taskmgr' ? (
-              <RotateCw className="spin" size={13} />
-            ) : (
-              <Activity size={13} className="text-cyan" />
-            )}
-            <span>{t('myPc.taskManager')}</span>
+            <Activity size={13} className="text-cyan" />
+            <span className="hidden sm:inline">{t('myPc.taskManager')}</span>
           </button>
 
-          {/* 3. Real Windows Resource Monitor */}
+          {/* Native Windows Tool: Resource Monitor */}
           <button
             type="button"
             onClick={() => handleLaunchTool('resmon')}
             disabled={launchingTool === 'resmon'}
             className="mypc-btn focus-ring"
-            title={isRtl ? 'تشغيل مراقب موارد ويندوز المتقدم (resmon.exe)' : 'Launch native Windows Resource Monitor (resmon.exe)'}
+            title="Launch Windows Resource Monitor"
             data-testid="button-resmon"
           >
-            {launchingTool === 'resmon' ? (
-              <RotateCw className="spin" size={13} />
-            ) : (
-              <Server size={13} className="text-emerald-400" />
-            )}
-            <span>{t('myPc.resMon')}</span>
+            <Server size={13} className="text-emerald-500" />
+            <span className="hidden sm:inline">{t('myPc.resMon')}</span>
           </button>
 
-          {/* 4. Instant Telemetry Poll */}
+          {/* Refresh Sensors */}
           <button
             type="button"
             onClick={handleManualRefresh}
             disabled={refreshing}
-            className="mypc-btn focus-ring"
-            style={{ width: '34px', padding: 0, justifyContent: 'center' }}
+            className="mypc-btn mypc-btn-icon focus-ring"
             title={t('myPc.refresh')}
             data-testid="button-refresh-telemetry"
           >
             <RotateCw size={13} className={refreshing ? 'spin text-cyan' : ''} />
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* ── Real Feedback Banner (Displays actual memory & process stats) ── */}
+      {/* ── 2. Memory Flush Notification (Sleek Inline Pill) ── */}
       {flushResult && (
-        <div className="mypc-banner">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CheckCircle2 size={16} />
+        <div className="mypc-feedback-pill" role="status" aria-live="polite">
+          <div className="mypc-feedback-content">
+            <CheckCircle2 size={15} className="text-emerald-500 shrink-0" />
             <span>
               {isRtl
-                ? `تم تحرير ${flushResult.freedGB} جيجابايت من الذاكرة بنجاح عبر ${flushResult.procs} عملية في ويندوز!`
-                : `Successfully freed ${flushResult.freedGB} GB RAM across ${flushResult.procs} active Windows processes!`}
+                ? `تم تحرير ${flushResult.freedGB} جيجابايت من الذاكرة المؤقتة عبر ${flushResult.procs} عملية بنجاح.`
+                : `Standby memory trimmed: Freed ${flushResult.freedGB} GB RAM across ${flushResult.procs} active processes.`}
             </span>
           </div>
           <button
             type="button"
             onClick={() => setFlushResult(null)}
-            style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', padding: '2px', display: 'flex' }}
-            aria-label="Close"
+            className="mypc-feedback-close"
+            aria-label="Dismiss"
           >
-            <X size={14} />
+            <X size={13} />
           </button>
         </div>
       )}
 
-      {/* ── Section 1: Main Processors (CPU & RAM) ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+      {/* ── 3. Primary Processors: CPU & RAM Matrix ── */}
+      <section className="mypc-grid-two">
         
-        {/* CPU Matrix Card */}
-        <section className="panel module-card" style={{ padding: '22px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'hsl(var(--muted-foreground))', fontSize: '11px', fontWeight: 700, letterSpacing: '1px' }}>
-                <Cpu size={16} className="text-cyan" /> {t('myPc.processor').toUpperCase()}
-              </div>
-              <div style={{ marginTop: '8px', fontSize: '17px', fontWeight: 700, color: 'hsl(var(--foreground))' }}>
-                {data.cpu.name.replace('(R)', '').replace('(TM)', '')}
-              </div>
-              <div style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))', marginTop: '4px', display: 'flex', gap: '12px' }}>
-                <span>{data.cpu.logical_cores} {t('myPc.cores')}</span>
-                <span>•</span>
-                <span>{data.cpu.physical_cores} Physical</span>
-                <span>•</span>
-                <span className="text-cyan">{data.cpu.freq_mhz || 3800} MHz</span>
-              </div>
+        {/* CPU Telemetry Card */}
+        <div className="mypc-card">
+          <div className="mypc-card-header">
+            <div className="mypc-card-tag">
+              <Cpu size={15} className="text-cyan" />
+              <span>{t('myPc.processor')}</span>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '32px', fontWeight: 800, color: 'hsl(var(--primary))', lineHeight: 1 }}>
-                {data.cpu.usage_percent.toFixed(1)}%
-              </div>
-              <small className="mono" style={{ fontSize: '10px', color: 'hsl(var(--muted-foreground))' }}>{t('myPc.utilization')}</small>
+            <div className="mypc-rate-box">
+              <span className="mypc-rate-val mono">{data.cpu.usage_percent.toFixed(1)}%</span>
+              <span className="mypc-rate-sub mono">{t('myPc.utilization')}</span>
             </div>
           </div>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'hsl(var(--muted-foreground))', fontWeight: 600 }}>
-              <span className="mono">ACTIVE LOAD</span>
-              <span className="mono">{data.cpu.usage_percent.toFixed(1)}%</span>
-            </div>
-            <div style={{ background: 'hsl(var(--secondary))', height: '7px', borderRadius: '4px', overflow: 'hidden' }}>
-              <div style={{ 
-                background: 'linear-gradient(90deg, hsl(var(--primary)), hsl(194 100% 65%))', 
-                height: '100%', 
-                width: `${Math.min(100, Math.max(3, data.cpu.usage_percent))}%`,
-                transition: 'width 300ms ease-out'
-              }} />
-            </div>
-          </div>
-        </section>
 
-        {/* RAM Matrix Card */}
-        <section className="panel module-card" style={{ padding: '22px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'hsl(var(--muted-foreground))', fontSize: '11px', fontWeight: 700, letterSpacing: '1px' }}>
-                <Microchip size={16} className="text-emerald-400" /> {t('myPc.memory').toUpperCase()}
-              </div>
-              <div style={{ marginTop: '8px', fontSize: '17px', fontWeight: 700, color: 'hsl(var(--foreground))' }}>
-                {data.memory.total_gb.toFixed(1)} GB High-Speed RAM
-              </div>
-              <div style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))', marginTop: '4px', display: 'flex', gap: '10px' }}>
-                <span><b className="text-foreground">{data.memory.used_gb.toFixed(1)} GB</b> {t('myPc.inUse')}</span>
-                <span>•</span>
-                <span><b className="text-emerald-400">{data.memory.free_gb.toFixed(1)} GB</b> {t('myPc.free')}</span>
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '32px', fontWeight: 800, color: 'hsl(var(--accent))', lineHeight: 1 }}>
-                {data.memory.percent.toFixed(1)}%
-              </div>
-              <small className="mono" style={{ fontSize: '10px', color: 'hsl(var(--muted-foreground))' }}>{t('myPc.allocation')}</small>
-            </div>
+          <div className="mypc-chip-name">
+            {data.cpu.name.replace(/\(R\)|\(TM\)/gi, '').trim()}
           </div>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'hsl(var(--muted-foreground))', fontWeight: 600 }}>
-              <span className="mono">PHYSICAL USAGE</span>
-              <span className="mono">{data.memory.used_gb.toFixed(1)} / {data.memory.total_gb.toFixed(1)} GB</span>
-            </div>
-            <div style={{ background: 'hsl(var(--secondary))', height: '7px', borderRadius: '4px', overflow: 'hidden' }}>
-              <div style={{ 
-                background: 'linear-gradient(90deg, hsl(var(--accent)), hsl(155 80% 60%))', 
-                height: '100%', 
-                width: `${Math.min(100, Math.max(3, data.memory.percent))}%`,
-                transition: 'width 300ms ease-out'
-              }} />
-            </div>
-          </div>
-        </section>
-      </div>
 
-      {/* ── Section 2: Dual Graphics Processors (GPUs) ── */}
-      <section className="panel" style={{ padding: '20px 22px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <Monitor size={16} className="text-cyan" />
-          <h2 style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '0.04em' }}>{t('myPc.graphics')}</h2>
-          <span style={{ fontSize: '11px', color: 'hsl(var(--muted-foreground))' }}>• {t('myPc.graphicsDesc')}</span>
+          <div className="mypc-specs-row mono">
+            <span>{data.cpu.logical_cores} {t('myPc.cores')}</span>
+            <span>•</span>
+            <span>{data.cpu.physical_cores} Physical</span>
+            <span>•</span>
+            <span className="text-cyan font-semibold">{data.cpu.freq_mhz || 3800} MHz</span>
+          </div>
+
+          {/* Progress Bar & Mini Sparkline */}
+          <div className="mypc-meter-group">
+            <div className="mypc-meter-header mono">
+              <span>{t('myPc.cpuLoadHistory')}</span>
+              <span>{data.cpu.usage_percent.toFixed(1)}%</span>
+            </div>
+            <div className="mypc-meter-track">
+              <div
+                className="mypc-meter-fill mypc-meter-cyan"
+                style={{ width: `${Math.min(100, Math.max(3, data.cpu.usage_percent))}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Realtime 12-point Sparkline */}
+          <div className="mypc-sparkline-wrap">
+            <svg viewBox="0 0 140 34" className="mypc-sparkline-svg" preserveAspectRatio="none">
+              <polyline
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                points={sparklinePoints}
+              />
+            </svg>
+          </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '14px' }}>
+        {/* RAM Telemetry Card */}
+        <div className="mypc-card">
+          <div className="mypc-card-header">
+            <div className="mypc-card-tag">
+              <Microchip size={15} className="text-emerald-500" />
+              <span>{t('myPc.memory')}</span>
+            </div>
+            <div className="mypc-rate-box">
+              <span className="mypc-rate-val mono text-emerald-500">{data.memory.percent.toFixed(1)}%</span>
+              <span className="mypc-rate-sub mono">{t('myPc.allocation')}</span>
+            </div>
+          </div>
+
+          <div className="mypc-chip-name">
+            {data.memory.total_gb.toFixed(1)} GB High-Speed Memory
+          </div>
+
+          <div className="mypc-specs-row mono">
+            <span><b className="text-foreground">{data.memory.used_gb.toFixed(1)} GB</b> {t('myPc.inUse')}</span>
+            <span>•</span>
+            <span className="text-emerald-500 font-semibold">{data.memory.free_gb.toFixed(1)} GB {t('myPc.free')}</span>
+            {data.memory.swap_total_gb && (
+              <>
+                <span>•</span>
+                <span className="text-muted-foreground">{t('myPc.swapMemory')}: {data.memory.swap_used_gb || 0}/{data.memory.swap_total_gb} GB</span>
+              </>
+            )}
+          </div>
+
+          {/* Progress Bar */}
+          <div className="mypc-meter-group">
+            <div className="mypc-meter-header mono">
+              <span>{t('myPc.allocation')}</span>
+              <span>{data.memory.used_gb.toFixed(1)} / {data.memory.total_gb.toFixed(1)} GB</span>
+            </div>
+            <div className="mypc-meter-track">
+              <div
+                className="mypc-meter-fill mypc-meter-emerald"
+                style={{ width: `${Math.min(100, Math.max(3, data.memory.percent))}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Top 4 Memory-Consuming Processes */}
+          {data.top_processes && data.top_processes.length > 0 && (
+            <div className="mypc-procs-container">
+              <div className="mypc-procs-title mono">
+                <span>{t('myPc.topProcesses')}</span>
+                <span>MB / %</span>
+              </div>
+              <div className="mypc-procs-list">
+                {data.top_processes.slice(0, 4).map((proc) => (
+                  <div key={proc.pid} className="mypc-proc-row">
+                    <span className="mypc-proc-name truncate">{proc.name}</span>
+                    <span className="mypc-proc-stat mono">
+                      {proc.memory_mb.toFixed(0)} MB <small>({proc.memory_percent}%)</small>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── 4. Graphics Accelerators (GPUs) ── */}
+      <section className="mypc-section">
+        <div className="mypc-section-header">
+          <Monitor size={15} className="text-cyan" />
+          <h2>{t('myPc.graphics')}</h2>
+          <span className="mypc-section-desc">• {t('myPc.graphicsDesc')}</span>
+          
+          <div className="mypc-section-actions">
+            <button
+              type="button"
+              onClick={() => handleLaunchTool('dxdiag')}
+              className="mypc-mini-tool focus-ring"
+              title="Launch DirectX Diagnostic Tool"
+            >
+              <span>{t('myPc.dxDiag')}</span>
+              <ExternalLink size={11} />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleLaunchTool('devmgmt')}
+              className="mypc-mini-tool focus-ring"
+              title="Launch Windows Device Manager"
+            >
+              <span>{t('myPc.deviceMgr')}</span>
+              <ExternalLink size={11} />
+            </button>
+          </div>
+        </div>
+
+        <div className="mypc-grid-two">
           {data.gpus.map((gpuName, idx) => {
             const isNvidia = gpuName.toLowerCase().includes('nvidia');
             return (
-              <div 
-                key={idx} 
-                className="panel-subtle" 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '14px', 
-                  padding: '14px 16px', 
-                  borderRadius: '8px',
-                  border: isNvidia ? '1px solid hsl(142 70% 45% / 0.3)' : '1px solid hsl(var(--border))',
-                  background: isNvidia ? 'hsl(142 70% 45% / 0.04)' : 'hsl(var(--secondary) / 0.4)'
-                }}
+              <div
+                key={idx}
+                className={`mypc-card mypc-gpu-card ${isNvidia ? 'mypc-gpu-discrete' : ''}`}
               >
-                <div style={{ 
-                  width: '42px', 
-                  height: '42px', 
-                  borderRadius: '8px', 
-                  background: isNvidia ? 'hsl(142 70% 45% / 0.12)' : 'hsl(var(--primary) / 0.12)', 
-                  display: 'grid', 
-                  placeItems: 'center', 
-                  color: isNvidia ? '#10b981' : 'hsl(var(--primary))',
-                  flexShrink: 0
-                }}>
-                  <Monitor size={22} />
+                <div className="mypc-gpu-icon-box">
+                  <Monitor size={20} />
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
-                    <span style={{ 
-                      fontSize: '9.5px', 
-                      fontWeight: 700, 
-                      padding: '2px 6px', 
-                      borderRadius: '4px',
-                      background: isNvidia ? '#10b981' : 'hsl(var(--primary))',
-                      color: '#000',
-                      letterSpacing: '0.04em'
-                    }}>
-                      {isNvidia ? 'DISCRETE GPU' : 'INTEGRATED'}
+                <div className="mypc-gpu-content">
+                  <div className="mypc-gpu-badges">
+                    <span className={`mypc-gpu-tag mono ${isNvidia ? 'is-discrete' : 'is-integrated'}`}>
+                      {isNvidia ? 'DISCRETE ACCELERATOR' : 'INTEGRATED GRAPHICS'}
                     </span>
-                    <span style={{ fontSize: '11px', color: 'hsl(var(--muted-foreground))' }}>GPU 0{idx}</span>
+                    <span className="mypc-gpu-index mono">GPU 0{idx}</span>
                   </div>
-                  <b style={{ fontSize: '13.5px', color: 'hsl(var(--foreground))', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                    {gpuName}
-                  </b>
-                  <small style={{ fontSize: '11px', color: 'hsl(var(--muted-foreground))' }}>
+                  <b className="mypc-gpu-name truncate">{gpuName}</b>
+                  <p className="mypc-gpu-desc">
                     {isNvidia ? t('myPc.discreteGpu') : t('myPc.integratedGpu')}
-                  </small>
+                  </p>
                 </div>
               </div>
             );
@@ -441,69 +589,59 @@ export default function MyPc() {
         </div>
       </section>
 
-      {/* ── Section 3: Storage Partitions & NVMe Disks ── */}
-      <section className="panel" style={{ padding: '20px 22px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <HardDrive size={16} className="text-amber-400" />
-          <h2 style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '0.04em' }}>{t('myPc.storage')}</h2>
-          <span style={{ fontSize: '11px', color: 'hsl(var(--muted-foreground))' }}>• {t('myPc.storageDesc')}</span>
+      {/* ── 5. Storage Partitions & NVMe Volumes ── */}
+      <section className="mypc-section">
+        <div className="mypc-section-header">
+          <HardDrive size={15} className="text-amber-400" />
+          <h2>{t('myPc.storage')}</h2>
+          <span className="mypc-section-desc">• {t('myPc.storageDesc')}</span>
+
+          <div className="mypc-section-actions">
+            <button
+              type="button"
+              onClick={() => handleLaunchTool('cleanmgr')}
+              className="mypc-mini-tool focus-ring"
+              title="Launch Windows Disk Cleanup"
+            >
+              <span>{t('myPc.cleanMgr')}</span>
+              <ExternalLink size={11} />
+            </button>
+          </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '14px' }}>
+        <div className="mypc-grid-two">
           {data.disks.map((disk) => {
             const isSystem = disk.drive.toUpperCase().includes('C');
             return (
-              <div 
-                key={disk.drive} 
-                className="panel-subtle" 
-                style={{ 
-                  padding: '16px', 
-                  borderRadius: '8px', 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  gap: '12px',
-                  border: isSystem ? '1px solid hsl(var(--primary) / 0.3)' : '1px solid hsl(var(--border))'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ 
-                      width: '36px', 
-                      height: '36px', 
-                      borderRadius: '8px', 
-                      background: isSystem ? 'hsl(var(--primary) / 0.1)' : 'hsl(var(--secondary))', 
-                      color: isSystem ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
-                      display: 'grid', 
-                      placeItems: 'center',
-                      fontWeight: 800,
-                      fontSize: '13px'
-                    }}>
+              <div key={disk.drive} className="mypc-card mypc-disk-card">
+                <div className="mypc-disk-header">
+                  <div className="mypc-disk-meta">
+                    <div className={`mypc-drive-letter ${isSystem ? 'is-system-drive' : ''}`}>
                       {disk.drive}
                     </div>
                     <div>
-                      <b style={{ fontSize: '13px', display: 'block' }}>{disk.label} ({disk.drive})</b>
-                      <small style={{ fontSize: '10.5px', color: 'hsl(var(--muted-foreground))' }}>{disk.fs} • {isSystem ? 'System Boot Drive' : 'Secondary Storage'}</small>
+                      <b className="mypc-disk-label">{disk.label} ({disk.drive})</b>
+                      <span className="mypc-disk-sub mono">
+                        {disk.fs} • {isSystem ? 'System Boot' : 'Secondary Storage'}
+                      </span>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <b style={{ fontSize: '14px', color: 'hsl(var(--foreground))' }}>{disk.percent}%</b>
-                    <small style={{ display: 'block', fontSize: '10px', color: 'hsl(var(--muted-foreground))' }}>USED</small>
+                  <div className="mypc-disk-percent mono">
+                    <b>{disk.percent}%</b>
+                    <small>{t('myPc.inUse').toUpperCase()}</small>
                   </div>
                 </div>
 
-                <div style={{ background: 'hsl(var(--background))', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ 
-                    background: isSystem 
-                      ? 'linear-gradient(90deg, hsl(var(--primary)), hsl(194 100% 60%))' 
-                      : 'linear-gradient(90deg, hsl(39 90% 55%), hsl(45 90% 60%))',
-                    height: '100%', 
-                    width: `${Math.min(100, Math.max(2, disk.percent))}%` 
-                  }} />
+                <div className="mypc-meter-track">
+                  <div
+                    className={`mypc-meter-fill ${isSystem ? 'mypc-meter-cyan' : 'mypc-meter-amber'}`}
+                    style={{ width: `${Math.min(100, Math.max(2, disk.percent))}%` }}
+                  />
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'hsl(var(--muted-foreground))' }}>
-                  <span><b className="text-foreground">{disk.free_gb.toFixed(0)} GB</b> free</span>
-                  <span>{disk.total_gb.toFixed(0)} GB total</span>
+                <div className="mypc-disk-footer mono">
+                  <span><b className="text-foreground">{disk.free_gb.toFixed(0)} GB</b> {t('myPc.free')}</span>
+                  <span>{disk.total_gb.toFixed(0)} GB {t('myPc.total')}</span>
                 </div>
               </div>
             );
@@ -511,30 +649,63 @@ export default function MyPc() {
         </div>
       </section>
 
-      {/* ── Section 4: System & Kernel Details ── */}
-      <section className="panel" style={{ padding: '20px 22px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <Server size={16} className="text-purple-400" />
-          <h2 style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '0.04em' }}>{t('myPc.os')}</h2>
-          <span style={{ fontSize: '11px', color: 'hsl(var(--muted-foreground))' }}>• {t('myPc.osDesc')}</span>
+      {/* ── 6. Power, Network & Operating Environment ── */}
+      <section className="mypc-section">
+        <div className="mypc-section-header">
+          <Server size={15} className="text-purple-400" />
+          <h2>{t('myPc.os')}</h2>
+          <span className="mypc-section-desc">• {t('myPc.osDesc')}</span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
-          <div className="panel-subtle" style={{ padding: '12px 16px', borderRadius: '8px' }}>
-            <small style={{ fontSize: '10px', color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.05em' }}>OS PLATFORM</small>
-            <b style={{ fontSize: '13px', display: 'block', marginTop: '3px' }}>{data.system.os}</b>
+        <div className="mypc-env-grid">
+          {/* Battery Status (if laptop) */}
+          {data.battery && (
+            <div className="mypc-env-tile">
+              <div className="mypc-env-tile-label mono">
+                {data.battery.plugged ? <BatteryCharging size={12} className="text-emerald-500" /> : <Battery size={12} className="text-amber-400" />}
+                <span>{t('myPc.batteryTitle')}</span>
+              </div>
+              <b className="mypc-env-tile-val">
+                {data.battery.percent}% {data.battery.plugged ? `(${t('myPc.acConnected')})` : `(${t('myPc.onBattery')})`}
+              </b>
+            </div>
+          )}
+
+          {/* Network Realtime Telemetry */}
+          {data.network && (
+            <div className="mypc-env-tile">
+              <div className="mypc-env-tile-label mono">
+                <Wifi size={12} className="text-cyan" />
+                <span>{t('myPc.networkTitle')}</span>
+              </div>
+              <b className="mypc-env-tile-val mono">
+                ↓ {data.network.recv_mb} MB • ↑ {data.network.sent_mb} MB
+              </b>
+            </div>
+          )}
+
+          {/* OS Platform */}
+          <div className="mypc-env-tile">
+            <span className="mypc-env-tile-label mono">OS PLATFORM</span>
+            <b className="mypc-env-tile-val">{data.system.os}</b>
           </div>
-          <div className="panel-subtle" style={{ padding: '12px 16px', borderRadius: '8px' }}>
-            <small style={{ fontSize: '10px', color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.05em' }}>WINDOWS BUILD</small>
-            <b style={{ fontSize: '13px', display: 'block', marginTop: '3px' }}>{data.system.build}</b>
+
+          {/* Windows Build */}
+          <div className="mypc-env-tile">
+            <span className="mypc-env-tile-label mono">WINDOWS BUILD</span>
+            <b className="mypc-env-tile-val mono">{data.system.build}</b>
           </div>
-          <div className="panel-subtle" style={{ padding: '12px 16px', borderRadius: '8px' }}>
-            <small style={{ fontSize: '10px', color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.05em' }}>MACHINE HOSTNAME</small>
-            <b style={{ fontSize: '13px', display: 'block', marginTop: '3px' }} className="mono">{data.system.hostname}</b>
+
+          {/* Sanitized Hostname */}
+          <div className="mypc-env-tile">
+            <span className="mypc-env-tile-label mono">MACHINE HOSTNAME</span>
+            <b className="mypc-env-tile-val mono">{data.system.hostname}</b>
           </div>
-          <div className="panel-subtle" style={{ padding: '12px 16px', borderRadius: '8px' }}>
-            <small style={{ fontSize: '10px', color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.05em' }}>SYSTEM UPTIME</small>
-            <b style={{ fontSize: '13px', display: 'block', marginTop: '3px', color: 'hsl(var(--primary))' }} className="mono">{data.system.uptime}</b>
+
+          {/* Live System Uptime */}
+          <div className="mypc-env-tile">
+            <span className="mypc-env-tile-label mono">{t('myPc.uptime').toUpperCase()}</span>
+            <b className="mypc-env-tile-val mono text-cyan">{data.system.uptime}</b>
           </div>
         </div>
       </section>

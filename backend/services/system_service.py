@@ -140,14 +140,17 @@ def get_hardware_details_data() -> Dict[str, Any]:
                         fs_buf,
                         ctypes.sizeof(fs_buf)
                     )
-                    label = buf.value
+                    clean_label = buf.value
                 except Exception:
-                    pass
+                    clean_label = ""
                 
+                if not clean_label or "abood" in clean_label.lower():
+                    clean_label = "Windows System" if p.device.startswith("C") else f"Data Volume ({p.device[:2]})"
+
                 disks.append({
                     "drive": p.device.replace("\\", ""),
                     "mount": p.mountpoint,
-                    "label": label or ("System Disk" if p.device.startswith("C") else "Volume"),
+                    "label": clean_label,
                     "fs": p.fstype,
                     "total_gb": round(usage.total / (1024**3), 1),
                     "used_gb": round(usage.used / (1024**3), 1),
@@ -173,9 +176,56 @@ def get_hardware_details_data() -> Dict[str, Any]:
     if not gpus:
         gpus = ["Unknown GPU"]
 
+    # 1. Battery Telemetry (for laptops)
+    battery_data = None
+    try:
+        batt = psutil.sensors_battery()
+        if batt is not None:
+            battery_data = {
+                "percent": round(batt.percent),
+                "plugged": bool(batt.power_plugged),
+                "secsleft": batt.secsleft if (batt.secsleft and batt.secsleft > 0) else None
+            }
+    except Exception:
+        pass
+
+    # 2. Network Realtime I/O
+    network_data = None
+    try:
+        net = psutil.net_io_counters()
+        network_data = {
+            "bytes_sent": net.bytes_sent,
+            "bytes_recv": net.bytes_recv,
+            "sent_mb": round(net.bytes_sent / (1024**2), 1),
+            "recv_mb": round(net.bytes_recv / (1024**2), 1)
+        }
+    except Exception:
+        pass
+
+    # 3. Top Active Processes by Memory
+    top_processes = []
+    try:
+        for p in sorted(
+            [proc.info for proc in psutil.process_iter(['pid', 'name', 'memory_percent', 'cpu_percent']) if proc.info.get('memory_percent')],
+            key=lambda x: x.get('memory_percent') or 0,
+            reverse=True
+        )[:5]:
+            top_processes.append({
+                "pid": p.get('pid', 0),
+                "name": p.get('name', 'Unknown'),
+                "memory_percent": round(p.get('memory_percent') or 0, 1),
+                "memory_mb": round(((p.get('memory_percent') or 0) / 100) * (mem.total / (1024**2)), 1),
+                "cpu_percent": round(p.get('cpu_percent') or 0, 1)
+            })
+    except Exception:
+        pass
+
     uptime_seconds = int(time.time() - boot_time)
     hours = uptime_seconds // 3600
     minutes = (uptime_seconds % 3600) // 60
+
+    raw_hostname = platform.node()
+    clean_hostname = "CORTEX-STATION" if "abood" in raw_hostname.lower() else raw_hostname
 
     return {
         "cpu": {
@@ -195,10 +245,13 @@ def get_hardware_details_data() -> Dict[str, Any]:
         },
         "gpus": gpus,
         "disks": disks,
+        "battery": battery_data,
+        "network": network_data,
+        "top_processes": top_processes,
         "system": {
             "os": f"Windows 11 {platform.architecture()[0]}",
             "build": platform.version(),
-            "hostname": platform.node(),
+            "hostname": clean_hostname,
             "uptime": f"{hours}h {minutes}m",
             "uptime_seconds": uptime_seconds
         }
@@ -247,7 +300,8 @@ def launch_tool_cmd(tool: str) -> Dict[str, Any]:
         "taskmgr": "taskmgr",
         "resmon": "resmon",
         "devmgmt": "devmgmt.msc",
-        "dxdiag": "dxdiag"
+        "dxdiag": "dxdiag",
+        "cleanmgr": "cleanmgr"
     }
     if tool not in allowed:
         return {"ok": False, "error": f"Unknown tool: {tool}"}
