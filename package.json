@@ -1,6 +1,6 @@
 {
   "name": "cortexos",
-  "version": "0.3.26",
+  "version": "0.4.1",
   "private": true,
   "type": "module",
   "scripts": {
