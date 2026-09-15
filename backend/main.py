@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from backend.config import CORTEX_DAEMON_TOKEN
 from backend.services.jwt_validator import verify_supabase_jwt
-from backend.routers import system, projects, ai, study
+from backend.routers import system, projects, ai, study, music
 
 app = FastAPI(
     title="CortexOS Hardened Neural Telemetry & Projects Daemon",
@@ -85,8 +85,8 @@ async def security_guard_middleware(request: Request, call_next):
 
     path = request.url.path
 
-    # Root & health check are open for daemon liveness probes
-    if path in {"/", "/api/health"}:
+    # Root, health check, and local media streams/covers (HTML5 audio/img cannot send custom headers)
+    if path in {"/", "/api/health", "/api/music/stream", "/api/music/cover"}:
         response = await call_next(request)
         return response
 
@@ -154,6 +154,7 @@ app.include_router(system.router)
 app.include_router(projects.router)
 app.include_router(ai.router)
 app.include_router(study.router)
+app.include_router(music.router)
 
 @app.get("/")
 async def root():

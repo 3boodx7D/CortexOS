@@ -1,46 +1,46 @@
 {
-  "version": "0.3.26",
-  "releaseDate": "2026-09-14",
+  "version": "0.4.1",
+  "releaseDate": "2026-09-16",
   "title": {
-    "en": "Welcome to CortexOS v0.3.26",
-    "ar": "مرحباً بك في CortexOS v0.3.26"
+    "en": "Welcome to CortexOS v0.4.1",
+    "ar": "مرحباً بك في CortexOS v0.4.1"
   },
   "subtitle": {
-    "en": "Redesigned My PC dashboard, Anti-Spam Clean RAM cooldown, Motion Governor, and rich hardware telemetry.",
-    "ar": "إعادة تصميم واجهة عتاد جهازي (My PC)، نظام حماية تنظيف الرام، مقبض أنماط الأداء، وحساسات متقدمة للعتاد."
+    "en": "Liquid Glass Music Lounge, native Windows 11 SMTC media session integration, interactive playlists, and embedded cover art metadata.",
+    "ar": "واجهة Music Lounge بنمط Liquid Glass، وتكامل كامل مع مشغل وسائط ويندوز 11 الرسمي، وإدارة قوائم التشغيل وتضمين الأغلفة داخل الملفات."
   },
   "highlights": [
     {
-      "icon": "Zap",
+      "icon": "Disc3",
       "title": {
-        "en": "Minimalist Calm Hardware Hub",
-        "ar": "مركز عتاد هادئ وأنيق بالكامل"
+        "en": "Liquid Glass Music Lounge",
+        "ar": "مشغل الموسيقى Liquid Glass الفخم"
       },
       "description": {
-        "en": "Clean monochromatic aesthetic with impeccable Light & Dark theme parity, sanitized system labels, and uncluttered layout.",
-        "ar": "تصميم هادئ وبسيط يدعم الثيمين الداكن والفاتح بتطابق تام، مع تنظيف تسميات النظام وإزالة أي فوضى بصرية."
+        "en": "Full offline playback, YouTube playlist & mix expansion, concurrent multi-downloads, and embedded cover art & ID3 metadata.",
+        "ar": "تشغيل صوتي عالي الدقة دون إنترنت، تحميل متعدد متزامن وتوسيع قوائم يوتيوب، مع تضمين الأغلفة وبيانات الفنان داخل الملفات."
       }
     },
     {
-      "icon": "Sliders",
+      "icon": "ListMusic",
       "title": {
-        "en": "Anti-Spam RAM Optimization",
-        "ar": "نظام تنظيف الذاكرة مع حماية السبام"
+        "en": "Interactive Playlists & Auto-Advance",
+        "ar": "قوائم التشغيل التفاعلية والانتقال التلقائي"
       },
       "description": {
-        "en": "20-second cooldown protection preventing accidental spam, real-time memory recovery feedback, and standby cache trimming.",
-        "ar": "مؤقت تبريد ذكي لمدة 20 ثانية يمنع الضغط المتكرر، مع تقرير دقيق بالذاكرة المحررة دون التأثير على الواجهة."
+        "en": "Create and manage custom playlists, quick-add tracks with popover menu, seamless auto-advance between tracks, and native confirmation modals.",
+        "ar": "إنشاء وتخصيص قوائم تشغيل مخصصة، إضافة سريعة للأغاني بقوائم منبثقة، انتقال تلقائي سلس بين الأغاني، ونوافذ تأكيد مخصصة دون رسائل متصفح."
       }
     },
     {
-      "icon": "Sparkles",
+      "icon": "Volume2",
       "title": {
-        "en": "Motion Governor & Sensor Stream",
-        "ar": "مقبض أنماط الأداء ومستشعرات متقدمة"
+        "en": "Windows 11 SMTC Identity",
+        "ar": "تكامل مشغل ويندوز 11 الرسمي (SMTC)"
       },
       "description": {
-        "en": "Toggle FAST (low-power 3.5s polling) or STUDIO SMOOTH (60 FPS fluid telemetry). Includes battery, network I/O, and top processes.",
-        "ar": "تبديل فوري بين نمط FAST لتوفير الطاقة والبطارية ونمط STUDIO SMOOTH مع استهلاك الشبكة وأعلى العمليات استهلاكاً."
+        "en": "Registered CortexOS application identity and start menu integration with live track metadata, album artwork, and hardware media keys.",
+        "ar": "تسجيل هوية CortexOS الرسمية لدى ويندوز 11 لظهور اسم البرنامج وأيقونته وبيانات الأغنية وأزرار الوسائط في نافذة النظام."
       }
     }
   ]

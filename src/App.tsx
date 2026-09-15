@@ -13,6 +13,7 @@ import { Onboarding } from '@/components/onboarding';
 import { isTauri, invoke } from '@/lib/tauri';
 import { setDaemonToken } from '@/lib/api-client';
 import { UpdaterProvider } from '@/lib/updater-context';
+import { MusicPlayerProvider } from '@/lib/music-player';
 import type { MotionMode } from '@/pages/settings';
 
 import Overview from '@/pages/overview';
@@ -75,6 +76,7 @@ function App() {
             <UpdaterProvider>
               <DesktopDialogProvider>
                 <AuthGate>
+                  <MusicPlayerProvider>
                   {!onboardingDone ? (
                     <Onboarding
                       theme={theme}
@@ -106,6 +108,7 @@ function App() {
                       </Switch>
                     </AppShell>
                   )}
+                  </MusicPlayerProvider>
                 </AuthGate>
               </DesktopDialogProvider>
             </UpdaterProvider>

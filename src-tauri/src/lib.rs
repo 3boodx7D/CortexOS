@@ -182,6 +182,54 @@ pub fn run() {
             process: Mutex::new(child_proc),
         })
         .setup(|app| {
+            #[cfg(target_os = "windows")]
+            {
+                use std::ffi::OsStr;
+                use std::os::windows::ffi::OsStrExt;
+
+                #[link(name = "shell32")]
+                extern "system" {
+                    fn SetCurrentProcessExplicitAppUserModelID(AppID: *const u16) -> i32;
+                }
+
+                let app_id: Vec<u16> = OsStr::new("CortexOS").encode_wide().chain(std::iter::once(0)).collect();
+                unsafe {
+                    let _ = SetCurrentProcessExplicitAppUserModelID(app_id.as_ptr());
+                }
+
+                // Register Windows AppUserModelId and Start Menu shortcut so Windows SMTC media flyout shows CortexOS
+                std::thread::spawn(|| {
+                    use std::os::windows::process::CommandExt;
+                    let ps_cmd = r#"
+                        $ids = @('CortexOS', 'com.cortexos.desktop', 'msedgewebview2.exe');
+                        $exe = [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName;
+                        $dir = Split-Path $exe;
+                        $icon = Join-Path $dir "icons\icon.ico";
+                        if (-not (Test-Path $icon)) { $icon = $exe; }
+                        foreach ($id in $ids) {
+                            $p = "HKCU:\Software\Classes\AppUserModelId\$id";
+                            New-Item -Path $p -Force | Out-Null;
+                            Set-ItemProperty -Path $p -Name 'DisplayName' -Value 'CortexOS';
+                            Set-ItemProperty -Path $p -Name 'IconUri' -Value $icon;
+                            Set-ItemProperty -Path $p -Name 'ShowInSettings' -Value 1 -Type DWord;
+                        }
+                        $sc = Join-Path ([Environment]::GetFolderPath('Programs')) "CortexOS.lnk";
+                        if (-not (Test-Path $sc)) {
+                            $ws = New-Object -ComObject WScript.Shell;
+                            $s = $ws.CreateShortcut($sc);
+                            $s.TargetPath = $exe;
+                            $s.WorkingDirectory = $dir;
+                            $s.IconLocation = "$icon,0";
+                            $s.Save();
+                        }
+                    "#;
+                    let _ = std::process::Command::new("powershell")
+                        .args(["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", ps_cmd])
+                        .creation_flags(0x08000000)
+                        .status();
+                });
+            }
+
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()

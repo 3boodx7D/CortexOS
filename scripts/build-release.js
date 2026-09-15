@@ -85,8 +85,9 @@ try {
 // 7. Check backend sidecar binary
 const sidecarPath = path.join(ROOT_DIR, 'src-tauri', 'binaries', 'cortex-backend-x86_64-pc-windows-msvc.exe');
 if (!fs.existsSync(sidecarPath)) {
-  console.log(`${yellow('!')} Sidecar binary not found. Compiling with PyInstaller...`);
-  execSync('python -m PyInstaller cortex-backend.spec --noconfirm', { cwd: ROOT_DIR, stdio: 'inherit', shell: true });
+  const venvPython = path.join(ROOT_DIR, 'backend', 'venv', 'Scripts', 'python.exe');
+  const pyCmd = fs.existsSync(venvPython) ? `"${venvPython}"` : 'python';
+  execSync(`${pyCmd} -m PyInstaller cortex-backend.spec --noconfirm`, { cwd: ROOT_DIR, stdio: 'inherit', shell: true });
   fs.copyFileSync(path.join(ROOT_DIR, 'dist', 'cortex-backend.exe'), sidecarPath);
   console.log(`${green('✓')} Sidecar binary created.`);
 } else {
